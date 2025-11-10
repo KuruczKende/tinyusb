@@ -30,23 +30,8 @@
 
 #include "hcd.h"
 #include "tusb.h"
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-#include "usbh_pvt.h"
-#include "hub.h"
-=======
 #include "host/usbh_pvt.h"
 #include <class/hub/hub_host.h>
->>>>>>> Stashed changes
-=======
-#include "host/usbh_pvt.h"
-#include <class/hub/hub_host.h>
->>>>>>> Stashed changes
-=======
-#include "host/usbh_pvt.h"
-#include <class/hub/hub_host.h>
->>>>>>> Stashed changes
 
 //--------------------------------------------------------------------+
 // Configuration
@@ -494,35 +479,12 @@ bool tuh_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
 
   // Init host stack if not already
   if (!tuh_inited()) {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    TU_LOG_INT_USBH(sizeof(usbh_data_t));
-    TU_LOG_INT_USBH(sizeof(usbh_device_t));
-    TU_LOG_INT_USBH(sizeof(hcd_event_t));
-    TU_LOG_INT_USBH(sizeof(tuh_xfer_t));
-    TU_LOG_INT_USBH(sizeof(tu_fifo_t));
-    TU_LOG_INT_USBH(sizeof(tu_edpt_stream_t));
-=======
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
     TU_LOG_INT(sizeof(usbh_device_t));
     TU_LOG_INT(sizeof(hcd_event_t));
     TU_LOG_INT(sizeof(_ctrl_xfer));
     TU_LOG_INT(sizeof(tuh_xfer_t));
     TU_LOG_INT(sizeof(tu_fifo_t));
     TU_LOG_INT(sizeof(tu_edpt_stream_t));
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-
-    osal_spin_init(&_usbh_spin);
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
     // Event queue
     _usbh_q = osal_queue_create(&_usbh_qdef);
@@ -678,13 +640,6 @@ void tuh_task_ext(uint32_t timeout_ms, bool in_isr) {
         if (event.connection.hub_addr != 0 && event.connection.hub_port != 0) {
           // done with hub, waiting for next data on status pipe
           (void) hubh_edpt_status_xfer(event.connection.hub_addr);
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         }
         break;
 
@@ -903,13 +858,13 @@ static bool usbh_control_xfer_cb (uint8_t daddr, uint8_t ep_addr, xfer_result_t 
           }
           TU_ATTR_FALLTHROUGH;
 
-<<<<<<< Updated upstream
-        case CONTROL_STAGE_DATA: {
-            if (request->wLength > 0) {
-              TU_LOG_USBH("[%u:%u] Control data:\r\n", rhport, daddr);
-              TU_LOG_MEM_USBH(ctrl_info->buffer, xferred_bytes, 2);
-            }
-            ctrl_info->actual_len = (uint16_t) xferred_bytes;
+        case CONTROL_STAGE_DATA:
+          if (request->wLength) {
+            TU_LOG_USBH("[%u:%u] Control data:\r\n", rhport, daddr);
+            TU_LOG_MEM(_ctrl_xfer.buffer, xferred_bytes, 2);
+          }
+
+        _ctrl_xfer.actual_len = (uint16_t) xferred_bytes;
 
             // ACK stage: toggle is always 1
             _control_set_xfer_stage(CONTROL_STAGE_ACK);
@@ -2084,13 +2039,6 @@ static void enum_full_complete(void) {
 =======
   if (_dev0.hub_addr) {
     hubh_edpt_status_xfer(_dev0.hub_addr); // get next hub status
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
   }
 #endif
 

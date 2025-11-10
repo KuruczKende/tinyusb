@@ -75,6 +75,7 @@ void board_init(void){}
 // Init board after tinyusb is initialized
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream:hw/bsp/board_api.h
 void board_init_after_tusb(void);
 
@@ -86,6 +87,12 @@ void board_init_after_tusb(void){}
 // Jump to bootloader
 void board_reset_to_bootloader(void){}
 >>>>>>> Stashed changes:src/bsp/board_api.h
+=======
+void board_init_after_tusb(void){}
+
+// Jump to bootloader
+void board_reset_to_bootloader(void){}
+>>>>>>> Stashed changes
 =======
 void board_init_after_tusb(void){}
 
@@ -113,11 +120,15 @@ uint32_t board_button_read(void){}
 // Get board unique ID for USB serial number. Return number of bytes. Note max_len is typically 16
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream:hw/bsp/board_api.h
 size_t board_get_unique_id(uint8_t id[], size_t max_len);
 =======
 TU_ATTR_WEAK size_t board_get_unique_id(uint8_t id[], size_t max_len){}
 >>>>>>> Stashed changes:src/bsp/board_api.h
+=======
+TU_ATTR_WEAK size_t board_get_unique_id(uint8_t id[], size_t max_len){}
+>>>>>>> Stashed changes
 =======
 TU_ATTR_WEAK size_t board_get_unique_id(uint8_t id[], size_t max_len){}
 >>>>>>> Stashed changes
@@ -181,6 +192,7 @@ static inline void board_led_off(void) {
 // Input is string descriptor from index 1 (index 0 is type + len)
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream:hw/bsp/board_api.h
 static inline size_t board_usb_get_serial(uint16_t desc_str1[], size_t max_chars) {
   uint8_t uid[16] TU_ATTR_ALIGNED(4);
@@ -215,11 +227,15 @@ static inline size_t board_usb_get_serial(uint16_t desc_str1[], size_t max_chars
 =======
 static inline size_t board_usb_get_serial(uint16_t desc_str1[], size_t max_chars) {}
 >>>>>>> Stashed changes
+=======
+static inline size_t board_usb_get_serial(uint16_t desc_str1[], size_t max_chars) {}
+>>>>>>> Stashed changes
 
 // TODO remove
 static inline void board_delay(uint32_t ms) {}
 
 // stdio getchar() is blocking, this is non-blocking version
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream:hw/bsp/board_api.h
@@ -228,6 +244,9 @@ void board_putchar(int c);
 =======
 int board_getchar(void){}
 >>>>>>> Stashed changes:src/bsp/board_api.h
+=======
+int board_getchar(void){}
+>>>>>>> Stashed changes
 =======
 int board_getchar(void){}
 >>>>>>> Stashed changes
