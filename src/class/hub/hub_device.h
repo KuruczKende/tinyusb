@@ -25,6 +25,7 @@
  */
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream:src/typec/usbc.h
 #ifndef TUSB_UTCD_H_
 #define TUSB_UTCD_H_
@@ -32,6 +33,10 @@
 #ifndef TUSB_HUB_DEVICE_H_
 #define TUSB_HUB_DEVICE_H_
 >>>>>>> Stashed changes:src/class/hub/hub_device.h
+=======
+#ifndef TUSB_HUB_DEVICE_H_
+#define TUSB_HUB_DEVICE_H_
+>>>>>>> Stashed changes
 =======
 #ifndef TUSB_HUB_DEVICE_H_
 #define TUSB_HUB_DEVICE_H_
@@ -62,6 +67,7 @@
 //--------------------------------------------------------------------+
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream:src/typec/usbc.h
 // Init typec stack on a port
 bool tuc_init(uint8_t rhport, uint32_t port_type);
@@ -89,18 +95,24 @@ extern void tcd_int_handler(uint8_t rhport);
 =======
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 //--------------------------------------------------------------------+
 // Application Callbacks
 //--------------------------------------------------------------------+
  uint8_t const * tud_hub_descriptor_report_cb();
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 >>>>>>> Stashed changes:src/class/hub/hub_device.h
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 
 //--------------------------------------------------------------------+
 // Internal Class Driver API
 //--------------------------------------------------------------------+
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream:src/typec/usbc.h
 
@@ -116,6 +128,8 @@ bool tuc_msg_request(uint8_t rhport, void const* rdo);
 =======
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 void     hubd_init            (void);
 bool     hubd_deinit          (void);
 void     hubd_reset           (uint8_t rhport);
@@ -123,7 +137,10 @@ uint16_t hubd_open            (uint8_t rhport, tusb_desc_interface_t const * itf
 bool     hubd_control_xfer_cb (uint8_t rhport, uint8_t stage, tusb_control_request_t const * request);
 bool     hubd_xfer_cb         (uint8_t rhport, uint8_t ep_addr, xfer_result_t event, uint32_t xferred_bytes);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 >>>>>>> Stashed changes:src/class/hub/hub_device.h
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 

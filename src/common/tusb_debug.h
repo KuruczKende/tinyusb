@@ -31,6 +31,8 @@
 
 #include "CTRACE.h"
 
+#include "CTRACE.h"
+
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -61,8 +63,13 @@ void tu_print_mem(void const *buf, uint32_t count, uint8_t indent);
 #else
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   #include <stdio.h>
   #define tu_printf(...)    (void) printf(__VA_ARGS__)
+=======
+	#define tu_printf			vUSB_TRACE_PutStringInfo
+	#define tu_printfc			vUSB_TRACE_PutString
+>>>>>>> Stashed changes
 =======
 	#define tu_printf			vUSB_TRACE_PutStringInfo
 	#define tu_printfc			vUSB_TRACE_PutString
@@ -132,6 +139,7 @@ static inline const char* tu_lookup_find(tu_lookup_table_t const* p_table, uint3
 
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 #ifndef TU_LOG
   #define TU_LOG(n, ...)
   #define TU_LOG_MEM(n, ...)
@@ -172,6 +180,8 @@ static inline const char* tu_lookup_find(tu_lookup_table_t const* p_table, uint3
   #define TU_LOG3_HEX(...)
 #endif
 
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======

@@ -158,6 +158,7 @@ typedef struct {
 TU_VERIFY_STATIC( sizeof(hub_port_status_response_t) == 4, "size is not correct");
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream:src/host/hub.h
 //--------------------------------------------------------------------+
 // HUB API
@@ -217,6 +218,8 @@ void hub_close      (uint8_t dev_addr);
 
 =======
 >>>>>>> Stashed changes:src/class/hub/hub.h
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 #ifdef __cplusplus

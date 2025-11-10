@@ -32,8 +32,13 @@
 #include "tusb.h"
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 #include "usbh_pvt.h"
 #include "hub.h"
+=======
+#include "host/usbh_pvt.h"
+#include <class/hub/hub_host.h>
+>>>>>>> Stashed changes
 =======
 #include "host/usbh_pvt.h"
 #include <class/hub/hub_host.h>
@@ -491,6 +496,7 @@ bool tuh_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
   if (!tuh_inited()) {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     TU_LOG_INT_USBH(sizeof(usbh_data_t));
     TU_LOG_INT_USBH(sizeof(usbh_device_t));
     TU_LOG_INT_USBH(sizeof(hcd_event_t));
@@ -500,6 +506,8 @@ bool tuh_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
 =======
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
     TU_LOG_INT(sizeof(usbh_device_t));
     TU_LOG_INT(sizeof(hcd_event_t));
     TU_LOG_INT(sizeof(_ctrl_xfer));
@@ -507,9 +515,12 @@ bool tuh_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
     TU_LOG_INT(sizeof(tu_fifo_t));
     TU_LOG_INT(sizeof(tu_edpt_stream_t));
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 >>>>>>> Stashed changes
 
     osal_spin_init(&_usbh_spin);
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 
@@ -668,6 +679,9 @@ void tuh_task_ext(uint32_t timeout_ms, bool in_isr) {
           // done with hub, waiting for next data on status pipe
           (void) hubh_edpt_status_xfer(event.connection.hub_addr);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -908,6 +922,9 @@ static bool usbh_control_xfer_cb (uint8_t daddr, uint8_t ep_addr, xfer_result_t 
             TU_LOG_USBH("[%u:%u] Control data:\r\n", rhport, daddr);
             TU_LOG_MEM(_ctrl_xfer.buffer, xferred_bytes, 2);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -2068,6 +2085,9 @@ static void enum_full_complete(void) {
   if (_dev0.hub_addr) {
     hubh_edpt_status_xfer(_dev0.hub_addr); // get next hub status
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes

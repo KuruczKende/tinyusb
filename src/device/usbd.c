@@ -362,10 +362,13 @@ tu_static uint8_t _app_driver_count = 0;
 // Application is positioned first to allow overwriting built-in ones.
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 TU_ATTR_ALWAYS_INLINE static inline usbd_class_driver_t const * get_driver(uint8_t drvid) {
   usbd_class_driver_t const *driver = NULL;
   if (drvid < _app_driver_count) {
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 static usbd_class_driver_t const * get_driver(uint8_t drvid) {
@@ -529,6 +532,7 @@ bool tud_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
   TU_ASSERT(rh_init);
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 #if CFG_TUSB_DEBUG >= CFG_TUD_LOG_LEVEL
   char const* speed_str = 0;
             switch (rh_init->speed) {
@@ -556,6 +560,8 @@ bool tud_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
 =======
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 
   TU_LOG_USBD("USBD init on controller %u, speed = %s\r\n", rhport,
     rh_init->speed == TUSB_SPEED_HIGH ? "High" : "Full");
@@ -564,6 +570,9 @@ bool tud_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
   TU_LOG_INT(sizeof(tu_fifo_t));
   TU_LOG_INT(sizeof(tu_edpt_stream_t));
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -677,6 +686,7 @@ bool tud_task_event_ready(void) {
  */
 
 #ifdef TROUGHT
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
 void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
   (void) in_isr; // not implemented yet
@@ -818,6 +828,8 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
 
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
   (void) in_isr; // not implemented yet
 
@@ -947,7 +959,10 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
 }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 #else
 
 void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
@@ -1078,6 +1093,9 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
   }
 }
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 #endif
 
