@@ -27,6 +27,8 @@
 #ifndef TUSB_DEBUG_H_
 #define TUSB_DEBUG_H_
 
+#include "CTRACE.h"
+
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -55,8 +57,13 @@ void tu_print_mem(void const *buf, uint32_t count, uint8_t indent);
   extern int CFG_TUSB_DEBUG_PRINTF(const char *format, ...);
   #define tu_printf    CFG_TUSB_DEBUG_PRINTF
 #else
+<<<<<<< Updated upstream
   #include <stdio.h>
   #define tu_printf(...)    (void) printf(__VA_ARGS__)
+=======
+	#define tu_printf			vUSB_TRACE_PutStringInfo
+	#define tu_printfc			vUSB_TRACE_PutString
+>>>>>>> Stashed changes
 #endif
 
 TU_ATTR_ALWAYS_INLINE static inline void tu_print_buf(uint8_t const* buf, uint32_t bufsize) {
@@ -66,39 +73,28 @@ TU_ATTR_ALWAYS_INLINE static inline void tu_print_buf(uint8_t const* buf, uint32
   tu_printf("\r\n");
 }
 
-// Log with Level
+
+#define TU_LOG0              vUSB_TRACE_PutStringErr
+#define TU_LOG1              vUSB_TRACE_PutStringErr
+#define TU_LOG2              vUSB_TRACE_PutStringWar
+#define TU_LOG3              vUSB_TRACE_PutStringInfo
+#define TU_LOG1D             vUSBD_TRACE_PutStringErr
+#define TU_LOG2D             vUSBD_TRACE_PutStringWar
+#define TU_LOG3D             vUSBD_TRACE_PutStringInfo
+#define TU_LOG1H             vUSBH_TRACE_PutStringErr
+#define TU_LOG2H             vUSBH_TRACE_PutStringWar
+#define TU_LOG3H             vUSBH_TRACE_PutStringInfo
+
 #define TU_LOG(n, ...)        TU_XSTRCAT(TU_LOG, n)(__VA_ARGS__)
-#define TU_LOG_MEM(n, ...)    TU_XSTRCAT3(TU_LOG, n, _MEM)(__VA_ARGS__)
-#define TU_LOG_BUF(n, ...)    TU_XSTRCAT3(TU_LOG, n, _BUF)(__VA_ARGS__)
-#define TU_LOG_INT(n, ...)    TU_XSTRCAT3(TU_LOG, n, _INT)(__VA_ARGS__)
-#define TU_LOG_HEX(n, ...)    TU_XSTRCAT3(TU_LOG, n, _HEX)(__VA_ARGS__)
+#define TU_LOG_S(n,s, ...)    TU_XSTRCAT3(TU_LOG, n, s)(__VA_ARGS__)
 #define TU_LOG_LOCATION()     tu_printf("%s: %d:\r\n", __PRETTY_FUNCTION__, __LINE__)
 #define TU_LOG_FAILED()       tu_printf("%s: %d: Failed\r\n", __PRETTY_FUNCTION__, __LINE__)
 
-// Log Level 1: Error
-#define TU_LOG1               tu_printf
-#define TU_LOG1_MEM           tu_print_mem
-#define TU_LOG1_BUF(_x, _n)   tu_print_buf((uint8_t const*)(_x), _n)
-#define TU_LOG1_INT(_x)       tu_printf(#_x " = %ld\r\n", (unsigned long) (_x) )
-#define TU_LOG1_HEX(_x)       tu_printf(#_x " = 0x%lX\r\n", (unsigned long) (_x) )
+#define TU_LOG_MEM           tu_print_mem
+#define TU_LOG_BUF(_x, _n)   tu_print_buf((uint8_t const*)(_x), _n)
+#define TU_LOG_INT(_x)       vUSB_TRACE_PutString(#_x " = %ld\r\n", (unsigned long) (_x) )
+#define TU_LOG_HEX(_x)       vUSB_TRACE_PutString(#_x " = 0x%lX\r\n", (unsigned long) (_x) )
 
-// Log Level 2: Warn
-#if CFG_TUSB_DEBUG >= 2
-  #define TU_LOG2             TU_LOG1
-  #define TU_LOG2_MEM         TU_LOG1_MEM
-  #define TU_LOG2_BUF         TU_LOG1_BUF
-  #define TU_LOG2_INT         TU_LOG1_INT
-  #define TU_LOG2_HEX         TU_LOG1_HEX
-#endif
-
-// Log Level 3: Info
-#if CFG_TUSB_DEBUG >= 3
-  #define TU_LOG3             TU_LOG1
-  #define TU_LOG3_MEM         TU_LOG1_MEM
-  #define TU_LOG3_BUF         TU_LOG1_BUF
-  #define TU_LOG3_INT         TU_LOG1_INT
-  #define TU_LOG3_HEX         TU_LOG1_HEX
-#endif
 
 typedef struct {
   uint32_t key;
@@ -127,6 +123,7 @@ static inline const char* tu_lookup_find(tu_lookup_table_t const* p_table, uint3
 
 #endif // CFG_TUSB_DEBUG
 
+<<<<<<< Updated upstream
 #ifndef TU_LOG
   #define TU_LOG(n, ...)
   #define TU_LOG_MEM(n, ...)
@@ -167,6 +164,8 @@ static inline const char* tu_lookup_find(tu_lookup_table_t const* p_table, uint3
   #define TU_LOG3_HEX(...)
 #endif
 
+=======
+>>>>>>> Stashed changes
 #ifdef __cplusplus
  }
 #endif

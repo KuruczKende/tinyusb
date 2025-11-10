@@ -30,8 +30,13 @@
 
 #include "hcd.h"
 #include "tusb.h"
+<<<<<<< Updated upstream
 #include "usbh_pvt.h"
 #include "hub.h"
+=======
+#include "host/usbh_pvt.h"
+#include <class/hub/hub_host.h>
+>>>>>>> Stashed changes
 
 //--------------------------------------------------------------------+
 // Configuration
@@ -262,12 +267,12 @@ static usbh_class_driver_t const usbh_class_drivers[] = {
   #if CFG_TUH_HUB
   {
       .name       = DRIVER_NAME("HUB"),
-      .init       = hub_init,
-      .deinit     = hub_deinit,
-      .open       = hub_open,
-      .set_config = hub_set_config,
-      .xfer_cb    = hub_xfer_cb,
-      .close      = hub_close
+      .init       = hubh_init,
+      .deinit     = hubh_deinit,
+      .open       = hubh_open,
+      .set_config = hubh_set_config,
+      .xfer_cb    = hubh_xfer_cb,
+      .close      = hubh_close
   },
   #endif
 
@@ -479,12 +484,21 @@ bool tuh_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
 
   // Init host stack if not already
   if (!tuh_inited()) {
+<<<<<<< Updated upstream
     TU_LOG_INT_USBH(sizeof(usbh_data_t));
     TU_LOG_INT_USBH(sizeof(usbh_device_t));
     TU_LOG_INT_USBH(sizeof(hcd_event_t));
     TU_LOG_INT_USBH(sizeof(tuh_xfer_t));
     TU_LOG_INT_USBH(sizeof(tu_fifo_t));
     TU_LOG_INT_USBH(sizeof(tu_edpt_stream_t));
+=======
+    TU_LOG_INT(sizeof(usbh_device_t));
+    TU_LOG_INT(sizeof(hcd_event_t));
+    TU_LOG_INT(sizeof(_ctrl_xfer));
+    TU_LOG_INT(sizeof(tuh_xfer_t));
+    TU_LOG_INT(sizeof(tu_fifo_t));
+    TU_LOG_INT(sizeof(tu_edpt_stream_t));
+>>>>>>> Stashed changes
 
     osal_spin_init(&_usbh_spin);
 
@@ -625,6 +639,7 @@ void tuh_task_ext(uint32_t timeout_ms, bool in_isr) {
 
       case HCD_EVENT_DEVICE_REMOVE:
         TU_LOG_USBH("[%u:%u:%u] USBH DEVICE REMOVED\r\n", event.rhport, event.connection.hub_addr, event.connection.hub_port);
+<<<<<<< Updated upstream
         if (_usbh_data.enumerating_daddr == 0 &&
             event.rhport == _usbh_data.dev0_bus.rhport &&
             event.connection.hub_addr == _usbh_data.dev0_bus.hub_addr &&
@@ -633,6 +648,15 @@ void tuh_task_ext(uint32_t timeout_ms, bool in_isr) {
           usbh_device_close(_usbh_data.dev0_bus.rhport, 0);
         } else {
           process_removed_device(event.rhport, event.connection.hub_addr, event.connection.hub_port);
+=======
+        process_removing_device(event.rhport, event.connection.hub_addr, event.connection.hub_port);
+
+        #if CFG_TUH_HUB
+        // TODO remove
+        if (event.connection.hub_addr != 0 && event.connection.hub_port != 0) {
+          // done with hub, waiting for next data on status pipe
+          (void) hubh_edpt_status_xfer(event.connection.hub_addr);
+>>>>>>> Stashed changes
         }
         break;
 
@@ -749,7 +773,7 @@ bool tuh_control_xfer (tuh_xfer_t* xfer) {
   TU_LOG_USBH("[%u:%u] %s: ", usbh_get_rhport(daddr), daddr,
               (xfer->setup->bmRequestType_bit.type == TUSB_REQ_TYPE_STANDARD && xfer->setup->bRequest <= TUSB_REQ_SYNCH_FRAME) ?
                   tu_str_std_request[xfer->setup->bRequest] : "Class Request");
-  TU_LOG_BUF_USBH(xfer->setup, 8);
+  TU_LOG_BUF(xfer->setup, 8);
 
   if (xfer->complete_cb != NULL) {
     TU_ASSERT(usbh_setup_send(daddr, (uint8_t const *) &_usbh_epbuf.request));
@@ -818,7 +842,7 @@ static bool usbh_control_xfer_cb (uint8_t daddr, uint8_t ep_addr, xfer_result_t 
   switch (result) {
     case XFER_RESULT_STALLED:
       TU_LOG_USBH("[%u:%u] Control STALLED, xferred_bytes = %" PRIu32 "\r\n", rhport, daddr, xferred_bytes);
-      TU_LOG_BUF_USBH(request, 8);
+      TU_LOG_BUF(request, 8);
       _control_xfer_complete(daddr, result);
     break;
 
@@ -834,7 +858,7 @@ static bool usbh_control_xfer_cb (uint8_t daddr, uint8_t ep_addr, xfer_result_t 
         TU_ASSERT(usbh_setup_send(daddr, (uint8_t const *) request));
       } else {
         TU_LOG_USBH("[%u:%u] Control FAILED, xferred_bytes = %" PRIu32 "\r\n", rhport, daddr, xferred_bytes);
-        TU_LOG_BUF_USBH(request, 8);
+        TU_LOG_BUF(request, 8);
         _control_xfer_complete(daddr, result);
       }
     break;
@@ -851,6 +875,7 @@ static bool usbh_control_xfer_cb (uint8_t daddr, uint8_t ep_addr, xfer_result_t 
           }
           TU_ATTR_FALLTHROUGH;
 
+<<<<<<< Updated upstream
         case CONTROL_STAGE_DATA: {
             if (request->wLength > 0) {
               TU_LOG_USBH("[%u:%u] Control data:\r\n", rhport, daddr);
@@ -863,6 +888,12 @@ static bool usbh_control_xfer_cb (uint8_t daddr, uint8_t ep_addr, xfer_result_t 
             const uint8_t ep_status = tu_edpt_addr(0, 1 - request->bmRequestType_bit.direction);
             TU_ASSERT(hcd_edpt_xfer(rhport, daddr, ep_status, NULL, 0));
             break;
+=======
+        case CONTROL_STAGE_DATA:
+          if (request->wLength) {
+            TU_LOG_USBH("[%u:%u] Control data:\r\n", rhport, daddr);
+            TU_LOG_MEM(_ctrl_xfer.buffer, xferred_bytes, 2);
+>>>>>>> Stashed changes
           }
 
         case CONTROL_STAGE_ACK: {
@@ -1526,12 +1557,31 @@ static void process_enumeration(tuh_xfer_t* xfer) {
         return;
       }
 
+<<<<<<< Updated upstream
       TU_ASSERT(hub_port_reset(dev0_bus->hub_addr, dev0_bus->hub_port, process_enumeration, ENUM_HUB_GET_STATUS_AFTER_RESET),);
       break;
     }
 
     case ENUM_HUB_GET_STATUS_AFTER_RESET: {
       tusb_time_delay_ms_api(ENUM_RESET_HUB_DELAY_MS); // wait for reset to take effect
+=======
+      _dev0.speed = (port_status.status.high_speed) ? TUSB_SPEED_HIGH :
+                    (port_status.status.low_speed) ? TUSB_SPEED_LOW : TUSB_SPEED_FULL;
+
+      // Acknowledge Port Reset Change
+      if (port_status.change.reset) {
+        hubh_port_clear_reset_change(_dev0.hub_addr, _dev0.hub_port,
+                                    process_enumeration, ENUM_ADDR0_DEVICE_DESC);
+      }
+      break;
+    }
+
+    case ENUM_HUB_GET_STATUS_2:
+      tusb_time_delay_ms_api(ENUM_RESET_DELAY_MS);
+      TU_ASSERT(hubh_port_get_status(_dev0.hub_addr, _dev0.hub_port, _usbh_epbuf.ctrl,
+                                    process_enumeration, ENUM_HUB_CLEAR_RESET_2),);
+      break;
+>>>>>>> Stashed changes
 
       // get status to check for reset change
       TU_ASSERT(hub_port_get_status(dev0_bus->hub_addr, dev0_bus->hub_port, NULL, process_enumeration, ENUM_HUB_CLEAR_RESET),);
@@ -1542,12 +1592,19 @@ static void process_enumeration(tuh_xfer_t* xfer) {
       hub_port_status_response_t port_status;
       hub_port_get_status_local(dev0_bus->hub_addr, dev0_bus->hub_port, &port_status);
 
+<<<<<<< Updated upstream
       if (1 == port_status.change.reset) {
         // Acknowledge Port Reset Change
         TU_ASSERT(hub_port_clear_reset_change(dev0_bus->hub_addr, dev0_bus->hub_port, process_enumeration, ENUM_HUB_CLEAR_RESET_COMPLETE),);
       } else {
         // maybe retry if reset change not set but we need timeout to prevent infinite loop
         // TU_ASSERT(hub_port_get_status(dev0_bus->hub_addr, dev0_bus->hub_port, NULL, process_enumeration, ENUM_HUB_CLEAR_RESET_COMPLETE),);
+=======
+      // Acknowledge Port Reset Change if Reset Successful
+      if (port_status.change.reset) {
+        TU_ASSERT(hubh_port_clear_reset_change(_dev0.hub_addr, _dev0.hub_port,
+                                              process_enumeration, ENUM_SET_ADDR),);
+>>>>>>> Stashed changes
       }
 
       break;
@@ -1785,7 +1842,61 @@ static void process_enumeration(tuh_xfer_t* xfer) {
   }
 }
 
+<<<<<<< Updated upstream
 static uint8_t enum_get_new_address(bool is_hub) {
+=======
+static bool enum_new_device(hcd_event_t* event) {
+  _dev0.rhport = event->rhport;
+  _dev0.hub_addr = event->connection.hub_addr;
+  _dev0.hub_port = event->connection.hub_port;
+
+  if (_dev0.hub_addr == 0) {
+    // connected directly to roothub
+    hcd_port_reset(_dev0.rhport);
+
+    // Since we are in middle of rhport reset, frame number is not available yet.
+    // need to depend on tusb_time_millis_api()
+    tusb_time_delay_ms_api(ENUM_RESET_DELAY_MS);
+
+    hcd_port_reset_end(_dev0.rhport);
+
+    // wait until device connection is stable TODO non blocking
+    tusb_time_delay_ms_api(ENUM_DEBOUNCING_DELAY_MS);
+
+    // device unplugged while delaying
+    if (!hcd_port_connect_status(_dev0.rhport)) {
+      enum_full_complete();
+      return true;
+    }
+
+    _dev0.speed = hcd_port_speed_get(_dev0.rhport);
+    TU_LOG_USBH("%s Speed\r\n", tu_str_speed[_dev0.speed]);
+
+    // fake transfer to kick-off the enumeration process
+    tuh_xfer_t xfer;
+    xfer.daddr = 0;
+    xfer.result = XFER_RESULT_SUCCESS;
+    xfer.user_data = ENUM_ADDR0_DEVICE_DESC;
+
+    process_enumeration(&xfer);
+  }
+#if CFG_TUH_HUB
+  else {
+    // connected via external hub
+    // wait until device connection is stable TODO non blocking
+    tusb_time_delay_ms_api(ENUM_DEBOUNCING_DELAY_MS);
+
+    // ENUM_HUB_GET_STATUS
+    TU_ASSERT(hubh_port_get_status(_dev0.hub_addr, _dev0.hub_port, _usbh_epbuf.ctrl,
+                                  process_enumeration, ENUM_HUB_CLEAR_RESET_1));
+  }
+#endif // hub
+
+  return true;
+}
+
+static uint8_t get_new_address(bool is_hub) {
+>>>>>>> Stashed changes
   uint8_t start;
   uint8_t end;
 
@@ -1933,8 +2044,13 @@ static void enum_full_complete(void) {
   _usbh_data.enumerating_daddr = TUSB_INDEX_INVALID_8;
 
 #if CFG_TUH_HUB
+<<<<<<< Updated upstream
   if (_usbh_data.dev0_bus.hub_addr != 0) {
     hub_edpt_status_xfer(_usbh_data.dev0_bus.hub_addr); // get next hub status
+=======
+  if (_dev0.hub_addr) {
+    hubh_edpt_status_xfer(_dev0.hub_addr); // get next hub status
+>>>>>>> Stashed changes
   }
 #endif
 

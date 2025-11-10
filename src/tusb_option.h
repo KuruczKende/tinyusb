@@ -414,12 +414,12 @@
 
 // Level where CFG_TUSB_DEBUG must be at least for USBH is logged
 #ifndef CFG_TUH_LOG_LEVEL
-  #define CFG_TUH_LOG_LEVEL   2
+  #define CFG_TUH_LOG_LEVEL   3
 #endif
 
 // Level where CFG_TUSB_DEBUG must be at least for USBD is logged
 #ifndef CFG_TUD_LOG_LEVEL
-  #define CFG_TUD_LOG_LEVEL   2
+  #define CFG_TUD_LOG_LEVEL   3
 #endif
 
 // Memory section for placing buffer used for usb transferring. If MEM_SECTION is different for

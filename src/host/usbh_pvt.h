@@ -35,11 +35,7 @@
  extern "C" {
 #endif
 
-#define TU_LOG_USBH(...)      TU_LOG(CFG_TUH_LOG_LEVEL, __VA_ARGS__)
-#define TU_LOG_MEM_USBH(...)  TU_LOG_MEM(CFG_TUH_LOG_LEVEL, __VA_ARGS__)
-#define TU_LOG_BUF_USBH(...)  TU_LOG_BUF(CFG_TUH_LOG_LEVEL, __VA_ARGS__)
-#define TU_LOG_INT_USBH(...)  TU_LOG_INT(CFG_TUH_LOG_LEVEL, __VA_ARGS__)
-#define TU_LOG_HEX_USBH(...)  TU_LOG_HEX(CFG_TUH_LOG_LEVEL, __VA_ARGS__)
+#define TU_LOG_USBH(...)      TU_LOG_S(CFG_TUH_LOG_LEVEL, H, __VA_ARGS__)
 
 //--------------------------------------------------------------------+
 // Class Driver API

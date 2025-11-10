@@ -34,7 +34,7 @@
  extern "C" {
 #endif
 
-#define TU_LOG_USBD(...)   TU_LOG(CFG_TUD_LOG_LEVEL, __VA_ARGS__)
+#define TU_LOG_USBD(...)   TU_LOG_S(CFG_TUD_LOG_LEVEL, D, __VA_ARGS__)
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES

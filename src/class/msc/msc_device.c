@@ -498,7 +498,7 @@ bool mscd_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t event, uint32_t
       memcpy(p_cbw, _mscd_epbuf.buf, sizeof(msc_cbw_t));
 
       TU_LOG_DRV("  SCSI Command [Lun%u]: %s\r\n", p_cbw->lun, tu_lookup_find(&_msc_scsi_cmd_table, p_cbw->command[0]));
-      // TU_LOG_MEM(CFG_TUD_MSC_LOG_LEVEL, p_cbw, xferred_bytes, 2);
+      // TU_LOG_MEM(p_cbw, xferred_bytes, 2);
 
       p_csw->signature    = MSC_CSW_SIGNATURE;
       p_csw->tag          = p_cbw->tag;
@@ -580,7 +580,7 @@ bool mscd_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t event, uint32_t
     case MSC_STAGE_DATA:
       TU_LOG_DRV("  SCSI Data [Lun%u]\r\n", p_cbw->lun);
       TU_ASSERT(xferred_bytes <= CFG_TUD_MSC_EP_BUFSIZE); // sanity check to avoid buffer overflow
-      // TU_LOG_MEM(CFG_TUD_MSC_LOG_LEVEL, _mscd_epbuf.buf, xferred_bytes, 2);
+      // TU_LOG_MEM(_mscd_epbuf.buf, xferred_bytes, 2);
 
       if (SCSI_CMD_READ_10 == p_cbw->command[0]) {
         p_msc->xferred_len += xferred_bytes;
@@ -627,7 +627,7 @@ bool mscd_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t event, uint32_t
       // Status phase is complete
       if ((ep_addr == p_msc->ep_in) && (xferred_bytes == sizeof(msc_csw_t))) {
         TU_LOG_DRV("  SCSI Status [Lun%u] = %u\r\n", p_cbw->lun, p_csw->status);
-        // TU_LOG_MEM(CFG_TUD_MSC_LOG_LEVEL, p_csw, xferred_bytes, 2);
+        // TU_LOG_MEM(p_csw, xferred_bytes, 2);
 
         // Invoke complete callback if defined
         // Note: There is racing issue with samd51 + qspi flash testing with arduino

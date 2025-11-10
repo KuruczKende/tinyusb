@@ -80,6 +80,10 @@
     #include "class/hid/hid_device.h"
   #endif
 
+  #if CFG_TUD_HUB
+	#include "class/hub/hub_device.h"
+  #endif
+
   #if CFG_TUD_CDC
     #include "class/cdc/cdc_device.h"
   #endif

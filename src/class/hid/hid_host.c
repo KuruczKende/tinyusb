@@ -482,8 +482,13 @@ bool hidh_xfer_cb(uint8_t daddr, uint8_t ep_addr, xfer_result_t result, uint32_t
   hidh_epbuf_t* epbuf = get_hid_epbuf(idx);
 
   if (dir == TUSB_DIR_IN) {
+<<<<<<< Updated upstream
     TU_LOG_DRV("  [idx=%u] Get Report callback\r\n", idx);
     TU_LOG3_MEM(epbuf->epin, xferred_bytes, 2);
+=======
+    TU_LOG_DRV("  Get Report callback (%u, %u)\r\n", daddr, idx);
+    TU_LOG_MEM(epbuf->epin, xferred_bytes, 2);
+>>>>>>> Stashed changes
     tuh_hid_report_received_cb(daddr, idx, epbuf->epin, (uint16_t) xferred_bytes);
   } else {
     tuh_hid_report_sent_cb(daddr, idx, epbuf->epout, (uint16_t) xferred_bytes);
