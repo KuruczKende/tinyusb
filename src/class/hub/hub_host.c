@@ -148,6 +148,7 @@ bool hubh_port_set_feature(uint8_t hub_addr, uint8_t hub_port, uint8_t feature,
   return true;
 }
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream:src/host/hub.c
 static void port_get_status_complete (tuh_xfer_t* xfer) {
   if (xfer->result == XFER_RESULT_SUCCESS) {
@@ -166,6 +167,9 @@ bool hub_port_get_status(uint8_t hub_addr, uint8_t hub_port, void* resp,
 =======
 bool hubh_port_get_status(uint8_t hub_addr, uint8_t hub_port, void* resp,
 >>>>>>> Stashed changes:src/class/hub/hub_host.c
+=======
+bool hubh_port_get_status(uint8_t hub_addr, uint8_t hub_port, void* resp,
+>>>>>>> Stashed changes
                          tuh_xfer_cb_t complete_cb, uintptr_t user_data) {
   tusb_control_request_t const request = {
     .bmRequestType_bit = {
@@ -274,10 +278,13 @@ bool hubh_edpt_status_xfer(uint8_t daddr) {
 static void config_set_port_power (tuh_xfer_t* xfer);
 static void config_port_power_complete (tuh_xfer_t* xfer);
 
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream:src/host/hub.c
 bool hub_set_config(uint8_t daddr, uint8_t itf_num) {
   hub_interface_t* p_hub = get_hub_itf(daddr);
 =======
+=======
+>>>>>>> Stashed changes
 bool hubh_set_config(uint8_t dev_addr, uint8_t itf_num) {
   hub_interface_t* p_hub = get_hub_itf(dev_addr);
 >>>>>>> Stashed changes:src/class/hub/hub_host.c
@@ -382,20 +389,28 @@ bool hubh_xfer_cb(uint8_t daddr, uint8_t ep_addr, xfer_result_t result, uint32_t
       processed = false;
     } else if (tu_bit_test(status_change, 0)) {
       // Hub bit 0 is for the hub device events
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream:src/host/hub.c
       processed = hub_get_status(daddr, p_epbuf->ctrl_buf, process_new_status, STATE_HUB_STATUS);
 =======
       processed = hubh_get_status(daddr, p_epbuf->ctrl_buf, get_status_complete, 0);
 >>>>>>> Stashed changes:src/class/hub/hub_host.c
+=======
+      processed = hubh_get_status(daddr, p_epbuf->ctrl_buf, get_status_complete, 0);
+>>>>>>> Stashed changes
     } else {
       // Hub bits 1 to n are hub port events
       for (uint8_t port=1; port <= p_hub->bNbrPorts; port++) {
         if (tu_bit_test(status_change, port)) {
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream:src/host/hub.c
           processed = hub_port_get_status(daddr, port, NULL, process_new_status, STATE_CLEAR_CHANGE);
 =======
           processed = hubh_port_get_status(daddr, port, p_epbuf->ctrl_buf, port_get_status_complete, 0);
 >>>>>>> Stashed changes:src/class/hub/hub_host.c
+=======
+          processed = hubh_port_get_status(daddr, port, p_epbuf->ctrl_buf, port_get_status_complete, 0);
+>>>>>>> Stashed changes
           break; // after completely processed one port, we will re-queue the status poll and handle next one
         }
       }
@@ -483,7 +498,10 @@ static void connection_clear_conn_change_complete (tuh_xfer_t* xfer) {
 
   if (xfer->result != XFER_RESULT_SUCCESS) {
     TU_ASSERT(hubh_edpt_status_xfer(daddr), );
+<<<<<<< Updated upstream
 >>>>>>> Stashed changes:src/class/hub/hub_host.c
+=======
+>>>>>>> Stashed changes
     return;
   }
 
@@ -532,7 +550,10 @@ static void connection_port_reset_complete (tuh_xfer_t* xfer) {
     // retry port reset if failed
     if (!tuh_control_xfer(xfer)) {
       TU_ASSERT(hubh_edpt_status_xfer(daddr), ); // back to status poll if failed to queue request
+<<<<<<< Updated upstream
 >>>>>>> Stashed changes:src/class/hub/hub_host.c
+=======
+>>>>>>> Stashed changes
     }
 
     case STATE_CLEAR_CHANGE:

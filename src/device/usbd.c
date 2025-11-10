@@ -361,10 +361,13 @@ tu_static uint8_t _app_driver_count = 0;
 // virtually joins built-in and application drivers together.
 // Application is positioned first to allow overwriting built-in ones.
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 TU_ATTR_ALWAYS_INLINE static inline usbd_class_driver_t const * get_driver(uint8_t drvid) {
   usbd_class_driver_t const *driver = NULL;
   if (drvid < _app_driver_count) {
 =======
+=======
+>>>>>>> Stashed changes
 static usbd_class_driver_t const * get_driver(uint8_t drvid) {
   usbd_class_driver_t const * driver = NULL;
   if ( drvid < _app_driver_count ) {
@@ -525,6 +528,7 @@ bool tud_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
   }
   TU_ASSERT(rh_init);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 #if CFG_TUSB_DEBUG >= CFG_TUD_LOG_LEVEL
   char const* speed_str = 0;
             switch (rh_init->speed) {
@@ -550,6 +554,8 @@ bool tud_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
   TU_LOG_INT(CFG_TUD_LOG_LEVEL, sizeof(tu_edpt_stream_t));
 #endif
 =======
+=======
+>>>>>>> Stashed changes
 
   TU_LOG_USBD("USBD init on controller %u, speed = %s\r\n", rhport,
     rh_init->speed == TUSB_SPEED_HIGH ? "High" : "Full");
@@ -557,6 +563,9 @@ bool tud_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
   TU_LOG_INT(sizeof(dcd_event_t));
   TU_LOG_INT(sizeof(tu_fifo_t));
   TU_LOG_INT(sizeof(tu_edpt_stream_t));
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
   tu_varclr(&_usbd_dev);
@@ -668,6 +677,7 @@ bool tud_task_event_ready(void) {
  */
 
 #ifdef TROUGHT
+<<<<<<< Updated upstream
 void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
   (void) in_isr; // not implemented yet
 
@@ -806,6 +816,8 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
 
 #else
 
+=======
+>>>>>>> Stashed changes
 void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
   (void) in_isr; // not implemented yet
 
@@ -934,6 +946,139 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
   }
 }
 
+<<<<<<< Updated upstream
+=======
+#else
+
+void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
+  (void) in_isr; // not implemented yet
+
+  // Skip if stack is not initialized
+  if (!tud_inited()) return;
+
+  // Loop until there is no more events in the queue
+  while (1) {
+    dcd_event_t event;
+    if (!osal_queue_receive(_usbd_q, &event, timeout_ms)) return;
+
+#if CFG_TUSB_DEBUG >= CFG_TUD_LOG_LEVEL
+    if (event.event_id == DCD_EVENT_SETUP_RECEIVED) TU_LOG_USBD("\r\n"); // extra line for setup
+    TU_LOG_USBD("USBD %s ", event.event_id < DCD_EVENT_COUNT ? _usbd_event_str[event.event_id] : "CORRUPTED");
+#endif
+
+    switch (event.event_id) {
+      case DCD_EVENT_BUS_RESET:
+        TU_LOG_USBD(": %s Speed\r\n", tu_str_speed[event.bus_reset.speed]);
+        usbd_reset(event.rhport);
+        _usbd_dev.speed = event.bus_reset.speed;
+        break;
+
+      case DCD_EVENT_UNPLUGGED:
+        TU_LOG_USBD("\r\n");
+        usbd_reset(event.rhport);
+        tud_umount_cb();
+        break;
+
+      case DCD_EVENT_SETUP_RECEIVED:
+        TU_ASSERT(_usbd_queued_setup > 0,);
+        _usbd_queued_setup--;
+        TU_LOG_BUF(&event.setup_received, 8);
+        if (_usbd_queued_setup) {
+          TU_LOG_USBD("  Skipped since there is other SETUP in queue\r\n");
+          break;
+        }
+
+        // Mark as connected after receiving 1st setup packet.
+        // But it is easier to set it every time instead of wasting time to check then set
+        _usbd_dev.connected = 1;
+
+        // mark both in & out control as free
+        _usbd_dev.ep_status[0][TUSB_DIR_OUT].busy = 0;
+        _usbd_dev.ep_status[0][TUSB_DIR_OUT].claimed = 0;
+        _usbd_dev.ep_status[0][TUSB_DIR_IN].busy = 0;
+        _usbd_dev.ep_status[0][TUSB_DIR_IN].claimed = 0;
+
+        // Process control request
+        if (!process_control_request(event.rhport, &event.setup_received)) {
+          TU_LOG_USBD("  Stall EP0\r\n");
+          // Failed -> stall both control endpoint IN and OUT
+          dcd_edpt_stall(event.rhport, 0);
+          dcd_edpt_stall(event.rhport, 0 | TUSB_DIR_IN_MASK);
+        }
+        break;
+
+      case DCD_EVENT_XFER_COMPLETE: {
+        // Invoke the class callback associated with the endpoint address
+        uint8_t const ep_addr = event.xfer_complete.ep_addr;
+        uint8_t const epnum = tu_edpt_number(ep_addr);
+        uint8_t const ep_dir = tu_edpt_dir(ep_addr);
+
+        TU_LOG_USBD("on EP %02X with %u bytes\r\n", ep_addr, (unsigned int) event.xfer_complete.len);
+
+        _usbd_dev.ep_status[epnum][ep_dir].busy = 0;
+        _usbd_dev.ep_status[epnum][ep_dir].claimed = 0;
+
+        if (0 == epnum) {
+          usbd_control_xfer_cb(event.rhport, ep_addr, (xfer_result_t) event.xfer_complete.result,
+                               event.xfer_complete.len);
+        } else {
+          usbd_class_driver_t const* driver = get_driver(_usbd_dev.ep2drv[epnum][ep_dir]);
+          TU_ASSERT(driver,);
+
+          TU_LOG_USBD("  %s xfer callback\r\n", driver->name);
+          driver->xfer_cb(event.rhport, ep_addr, (xfer_result_t) event.xfer_complete.result, event.xfer_complete.len);
+        }
+        break;
+      }
+
+      case DCD_EVENT_SUSPEND:
+        // NOTE: When plugging/unplugging device, the D+/D- state are unstable and
+        // can accidentally meet the SUSPEND condition ( Bus Idle for 3ms ), which result in a series of event
+        // e.g suspend -> resume -> unplug/plug. Skip suspend/resume if not connected
+        if (_usbd_dev.connected) {
+          TU_LOG_USBD(": Remote Wakeup = %u\r\n", _usbd_dev.remote_wakeup_en);
+          tud_suspend_cb(_usbd_dev.remote_wakeup_en);
+        } else {
+          TU_LOG_USBD(" Skipped\r\n");
+        }
+        break;
+
+      case DCD_EVENT_RESUME:
+        if (_usbd_dev.connected) {
+          TU_LOG_USBD("\r\n");
+          tud_resume_cb();
+        } else {
+          TU_LOG_USBD(" Skipped\r\n");
+        }
+        break;
+
+      case USBD_EVENT_FUNC_CALL:
+        TU_LOG_USBD("\r\n");
+        if (event.func_call.func) {
+          event.func_call.func(event.func_call.param);
+        }
+        break;
+
+      case DCD_EVENT_SOF:
+        if (tu_bit_test(_usbd_dev.sof_consumer, SOF_CONSUMER_USER)) {
+          TU_LOG_USBD("\r\n");
+          tud_sof_cb(event.sof.frame_count);
+        }
+      break;
+
+      default:
+        TU_BREAKPOINT();
+        break;
+    }
+
+#if CFG_TUSB_OS != OPT_OS_NONE && CFG_TUSB_OS != OPT_OS_PICO
+    // return if there is no more events, for application to run other background
+    if (osal_queue_empty(_usbd_q)) { return; }
+#endif
+  }
+}
+
+>>>>>>> Stashed changes
 #endif
 
 //--------------------------------------------------------------------+
