@@ -83,10 +83,10 @@ static inline void tu_print_buf(uint8_t const* buf, uint32_t bufsize) {
 #define TU_LOG_LOCATION()     tu_printf("%s: %d:\r\n", __PRETTY_FUNCTION__, __LINE__)
 #define TU_LOG_FAILED()       tu_printf("%s: %d: Failed\r\n", __PRETTY_FUNCTION__, __LINE__)
 
-#define TU_LOG_MEM           tu_print_mem
-#define TU_LOG_BUF(_x, _n)   tu_print_buf((uint8_t const*)(_x), _n)
-#define TU_LOG_INT(_x)       vUSB_TRACE_PutString(#_x " = %ld\r\n", (unsigned long) (_x) )
-#define TU_LOG_HEX(_x)       vUSB_TRACE_PutString(#_x " = 0x%lX\r\n", (unsigned long) (_x) )
+#define TU_LOG_MEM(_x, _n, _k)	vUSB_TRACE_PutBuffer((uint8_t const*)(_x), _n)
+#define TU_LOG_BUF(_x, _n)   	vUSB_TRACE_PutBuffer((uint8_t const*)(_x), _n)
+#define TU_LOG_INT(_x)       	vUSB_TRACE_PutString(#_x " = %ld\r\n", (unsigned long) (_x) )
+#define TU_LOG_HEX(_x)       	vUSB_TRACE_PutString(#_x " = 0x%lX\r\n", (unsigned long) (_x) )
 
 
 typedef struct {

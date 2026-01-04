@@ -44,6 +44,9 @@
 //--------------------------------------------------------------------+
 //
 //--------------------------------------------------------------------+
+
+#define HUB_MAX_PORT_NUM 16
+
 enum {
   HUB_REQUEST_GET_STATUS      = 0  ,
   HUB_REQUEST_CLEAR_FEATURE   = 1  ,
@@ -80,6 +83,20 @@ enum{
   HUB_FEATURE_PORT_RESET_CHANGE        = 20,
   HUB_FEATURE_PORT_TEST                = 21,
   HUB_FEATURE_PORT_INDICATOR           = 22
+};
+
+typedef enum {
+	HUB_PORT_STATE_CONNECTION 	= 0,
+	HUB_PORT_STATE_ENABLE 		= 1,
+	HUB_PORT_STATE_SUSPEND 		= 2,
+	HUB_PORT_STATE_OVER_CURRENT = 3,
+	HUB_PORT_STATE_RESET 		= 4,
+	  // 5-7 are reserved
+	HUB_PORT_STATE_POWER 		= 8,
+	HUB_PORT_STATE_LOW_SPEED 	= 9,
+	HUB_PORT_STATE_HIGH_SPEED 	= 10,
+	HUB_PORT_STATE_TEST 		= 11,
+	HUB_PORT_STATE_INDICATOR 	= 12,
 };
 
 enum {

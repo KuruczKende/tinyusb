@@ -874,7 +874,8 @@ static bool process_control_request(uint8_t rhport, tusb_control_request_t const
   // Vendor request
   if ( p_request->bmRequestType_bit.type == TUSB_REQ_TYPE_VENDOR ) {
     usbd_control_set_complete_callback(tud_vendor_control_xfer_cb);
-    return tud_vendor_control_xfer_cb(rhport, CONTROL_STAGE_SETUP, p_request);
+	TU_LOG_USBD("Vendore");
+	return tud_vendor_control_xfer_cb(rhport, CONTROL_STAGE_SETUP, p_request);
   }
 
 #if CFG_TUSB_DEBUG >= CFG_TUD_LOG_LEVEL
@@ -883,6 +884,7 @@ static bool process_control_request(uint8_t rhport, tusb_control_request_t const
     if (TUSB_REQ_GET_DESCRIPTOR != p_request->bRequest) TU_LOG_USBD("\r\n");
   }
 #endif
+	TU_LOG_USBD("Recipient %d", p_request->bmRequestType_bit.recipient);
 
   switch ( p_request->bmRequestType_bit.recipient ) {
     //------------- Device Requests e.g in enumeration -------------//
@@ -905,6 +907,7 @@ static bool process_control_request(uint8_t rhport, tusb_control_request_t const
         return false;
       }
 
+  	TU_LOG_USBD("bRequest %d", p_request->bRequest);
       switch ( p_request->bRequest ) {
         case TUSB_REQ_SET_ADDRESS:
           // Depending on mcu, status phase could be sent either before or after changing device address,
@@ -970,6 +973,7 @@ static bool process_control_request(uint8_t rhport, tusb_control_request_t const
         break;
 
         case TUSB_REQ_SET_FEATURE:
+          TU_LOG_USBD("SET_FEATURE_REQ");
           switch(p_request->wValue) {
             case TUSB_REQ_FEATURE_REMOTE_WAKEUP:
               TU_LOG_USBD("    Enable Remote Wakeup\r\n");
@@ -1009,6 +1013,7 @@ static bool process_control_request(uint8_t rhport, tusb_control_request_t const
         break;
 
         case TUSB_REQ_GET_STATUS: {
+        	TU_LOG_USBD("This called");
           // Device status bit mask
           // - Bit 0: Self Powered
           // - Bit 1: Remote Wakeup enabled
@@ -1106,13 +1111,22 @@ static bool process_control_request(uint8_t rhport, tusb_control_request_t const
 
           // Unknown/Unsupported request
           default:
+        	  	TU_LOG_USBD("Unknown");
             TU_BREAKPOINT();
             return false;
         }
       }
+      break;
     }
-    break;
 
+    case TUSB_REQ_RCPT_OTHER: {
+    	if ((TUSB_REQ_TYPE_CLASS == p_request->bmRequestType_bit.type) && boIsHubReq(p_request->bRequest)) {
+    		return hubd_handle_controll_port_request(rhport, p_request);
+    	}
+    	else{
+    		return false;
+    	}
+    }
     // Unknown recipient
     default:
       TU_BREAKPOINT();
@@ -1207,6 +1221,8 @@ static bool process_set_config(uint8_t rhport, uint8_t cfg_num)
         }
 
         // bind all endpoints to found driver
+        TU_LOG_USBD("Drv_id: %d\r\n", drv_id);
+        TU_LOG_BUF(desc_itf,sizeof(tusb_desc_interface_t));
         tu_edpt_bind_driver(_usbd_dev.ep2drv, desc_itf, drv_len, drv_id);
 
         // next Interface

@@ -54,12 +54,36 @@ static char const* const _hub_feature_str[] = {
   [HUB_FEATURE_PORT_TEST                ] = "PORT_TEST",
   [HUB_FEATURE_PORT_INDICATOR           ] = "PORT_INDICATOR",
 };
+static char const* const _hub_request_str[] = {
+  [HUB_REQUEST_GET_STATUS       ] = "GET_STATUS",
+  [HUB_REQUEST_CLEAR_FEATURE    ] = "CLEAR_FEATURE",
+  [HUB_REQUEST_SET_FEATURE      ] = "SET_FEATURE",
+  [HUB_REQUEST_GET_DESCRIPTOR   ] = "GET_DESCRIPTOR",
+  [HUB_REQUEST_SET_DESCRIPTOR	] = "SET_DESCRIPTOR",
+  [HUB_REQUEST_CLEAR_TT_BUFFER	] = "CLEAR_TT_BUFFER",
+  [HUB_REQUEST_RESET_TT         ] = "RESET_TT",
+  [HUB_REQUEST_GET_TT_STATE		] = "GET_TT_STATE",
+  [HUB_REQUEST_STOP_TT			] = "STOP_TT",
+};
 #endif
 
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF
 //--------------------------------------------------------------------+
+typedef struct {
+	hub_status_response_t sHubState;
+	hub_port_status_response_t sHubPortStates[HUB_MAX_PORT_NUM];
+} hubd_states;
+
+typedef struct {
+  uint8_t ep_in;
+  uint8_t ep_out;       // optional Out endpoint
+
+  hubd_states states;
+
+  const hub_desc_cs_t *hub_descriptor;
+} hubd_interface_t;
 
 typedef struct {
   TUD_EPBUF_DEF(ctrl , CFG_TUD_HUB_EP_BUFSIZE);
@@ -67,12 +91,15 @@ typedef struct {
   TUD_EPBUF_DEF(epout, CFG_TUD_HUB_EP_BUFSIZE);
 } hubd_epbuf_t;
 
-CFG_TUD_MEM_SECTION static hubd_epbuf_t _hubd_epbuf[CFG_TUD_HUB];
+CFG_TUD_MEM_SECTION static hubd_epbuf_t _hubd_epbuf;
+static hubd_interface_t hub_itf;
 
 /*------------- Helpers -------------*/
 TU_ATTR_ALWAYS_INLINE static inline uint8_t get_index_by_itfnum(uint8_t itf_num) {
   return 0xFF;
 }
+static void hubd_resetStates();
+static void hubd_setPortState(uint8_t u8PortNum, uint8_t u8PortFeature);
 
 //--------------------------------------------------------------------+
 // Weak stubs: invoked if no strong implementation is available
@@ -105,7 +132,17 @@ TU_ATTR_WEAK void tud_hub_report_complete_cb(uint8_t instance, uint8_t const* re
 //--------------------------------------------------------------------+
 // APPLICATION API
 //--------------------------------------------------------------------+
-
+bool boIsHubReq(uint8_t bRequest){
+	return ((bRequest == HUB_REQUEST_GET_STATUS)||
+			(bRequest == HUB_REQUEST_CLEAR_FEATURE)||
+			(bRequest == HUB_REQUEST_SET_FEATURE)||
+			(bRequest == HUB_REQUEST_GET_DESCRIPTOR)||
+			(bRequest == HUB_REQUEST_SET_DESCRIPTOR)||
+			(bRequest == HUB_REQUEST_CLEAR_TT_BUFFER)||
+			(bRequest == HUB_REQUEST_RESET_TT)||
+			(bRequest == HUB_REQUEST_GET_TT_STATE)||
+			(bRequest == HUB_REQUEST_STOP_TT));
+}
 //--------------------------------------------------------------------+
 // USBD-CLASS API
 //--------------------------------------------------------------------+
@@ -119,21 +156,54 @@ bool hubd_deinit(void) {
 
 void hubd_reset(uint8_t rhport) {
   (void)rhport;
-  //tu_memclr(_hubd_itf, sizeof(_hubd_itf));
+  //tu_memclr(hub_itf, sizeof(hub_itf));
 }
 
 uint16_t hubd_open(uint8_t rhport, tusb_desc_interface_t const *desc_itf, uint16_t max_len) {
-  return 0;
+	  TU_VERIFY(TUSB_CLASS_HUB == desc_itf->bInterfaceClass, 0);
+
+	  // len = interface + hub + n*endpoints
+	  uint16_t const drv_len = (uint16_t) (sizeof(tusb_desc_interface_t) + sizeof(hub_desc_cs_t) +
+	                                       desc_itf->bNumEndpoints * sizeof(tusb_desc_endpoint_t));
+	  TU_LOG_USBD("Size: %d, Ep: %d\r\n",drv_len,desc_itf->bNumEndpoints);
+
+	  TU_ASSERT(max_len >= drv_len, 0);
+
+	  hubd_epbuf_t *p_epbuf = &_hubd_epbuf;
+
+	  uint8_t const *p_desc = (uint8_t const *)desc_itf;
+
+	  //------------- HUB descriptor -------------//
+      TU_LOG_BUF(p_desc, max_len);
+	  p_desc = tu_desc_next(p_desc);
+	  TU_ASSERT(0x19 == tu_desc_type(p_desc), 0);
+	  hub_itf.hub_descriptor = (hub_desc_cs_t const *)p_desc;
+	  hubd_resetStates();
+
+	  //------------- Endpoint Descriptor -------------//
+	  p_desc = tu_desc_next(p_desc);
+	  TU_ASSERT(usbd_open_edpt_pair(rhport, p_desc, desc_itf->bNumEndpoints, TUSB_XFER_INTERRUPT, &hub_itf.ep_out, &hub_itf.ep_in), 0);
+
+	  // Prepare for output endpoint
+	  if (hub_itf.ep_out) {
+	    TU_ASSERT(usbd_edpt_xfer(rhport, hub_itf.ep_out, p_epbuf->epout, CFG_TUD_HUB_EP_BUFSIZE), drv_len);
+	  }
+
+	  return drv_len;
 }
-static hub_desc_cs_t hub_class_desc;
-uint8_t status[4]={0,0,0,1};
-bool first_accurance = true;
 // Invoked when a control transfer occurred on an interface of this class
 // Driver response accordingly to the request and the transfer stage (setup/data/ack)
 // return false to stall control endpoint (e.g unsupported request)
+tusb_control_request_t lastReq = {0};
 bool hubd_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const *request) {
   // Use this for control messages
-
+		int8_t ret = memcmp(&lastReq,request,sizeof(tusb_control_request_t));
+		TU_LOG_USBD("HubXferCb %d", ret);
+		if(ret == 0){
+			memcpy(&lastReq,request,sizeof(tusb_control_request_t));
+			return true;
+		}
+		memcpy(&lastReq,request,sizeof(tusb_control_request_t));
 	  //uint8_t const hid_itf = get_index_by_itfnum((uint8_t)request->wIndex);
 	  //TU_VERIFY(hid_itf < CFG_TUD_HUB);
 	  //hidd_interface_t *p_hid = &_hidd_itf[hid_itf];
@@ -159,27 +229,15 @@ bool hubd_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t 
 	    //------------- Class Specific Request -------------//
 	    switch (request->bRequest) {
 	    case HUB_REQUEST_GET_STATUS:
-	    	if( request->bmRequestType==0xA0&&
-	    		request->bRequest==0x00&&
-	    		request->wValue==0x0000&&
-	    		request->wIndex==0x0000&&
-	    		request->wLength==0x0004){
- 		   		tud_control_xfer(rhport, request, status, 4);
-	    	}
+			tud_control_xfer(rhport,request,&hub_itf.states.sHubState,sizeof(hub_status_response_t));
 	    	break;
 	    case HUB_REQUEST_CLEAR_FEATURE:
 	    	break;
 	    case HUB_REQUEST_SET_FEATURE:
 	    	break;
 	    case HUB_REQUEST_GET_DESCRIPTOR:
-	    	if( request->bmRequestType==0xA0&&
-	    		request->bRequest==0x06&&
-	    		request->wValue==0x2900&&
-	    		request->wIndex==0x0000&&
-	    		request->wLength==0x0047&&
-	    		first_accurance){
-
-	    		first_accurance = false;
+	    	if (request->wValue==0x2900&&
+	    		request->wIndex==0x0000){
 	    		tud_control_xfer(rhport, request, tud_hub_descriptor_report_cb(), 9);
 	    	}
 	    	else{
@@ -279,7 +337,6 @@ bool hubd_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t 
 	  } else {
 	    return false; // stall unsupported request
 	  }
-
 	  return true;
 }
 
@@ -288,6 +345,66 @@ bool hubd_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, uint32_
 
 	// Use this for messages
   return true;
+}
+
+static void hubd_resetStates(){
+	memset(&hub_itf.states, 0, sizeof(hubd_states));
+}
+//u8PortNum from 1 to bNbrPorts
+//u8PortFeature: the bit idx includeing state and change (hub.h 69.line)
+static void hubd_setPortState(uint8_t u8PortNum, uint8_t u8PortFeature){
+	hub_itf.states.sHubPortStates[u8PortNum-1].status.value |= (0xffff&(0x01<<(u8PortFeature)));
+	if (u8PortFeature <= HUB_PORT_STATE_RESET) {
+		hub_itf.states.sHubPortStates[u8PortNum-1].change.value |= (0x001f&(0x01<<(u8PortFeature)));
+	}
+}
+
+bool hubd_handle_controll_port_request(uint8_t rhport, const tusb_control_request_t* p_request) {
+    TU_LOG_USBD("hub %s request to port %d\r\n",_hub_request_str[p_request->bRequest],p_request->wIndex);
+
+	switch(p_request->bRequest) {
+	case HUB_REQUEST_GET_STATUS: {
+		if (p_request->wIndex == 0) {
+			tud_control_xfer(rhport,p_request,&hub_itf.states.sHubState,sizeof(hub_status_response_t));
+		}
+		else if (p_request->wIndex <= hub_itf.hub_descriptor->bNbrPorts) {
+			tud_control_xfer(rhport,p_request,&hub_itf.states.sHubPortStates[p_request->wIndex-1],sizeof(hub_port_status_response_t));
+		}
+		break;
+	}
+	case HUB_REQUEST_CLEAR_FEATURE: {
+
+		break;
+	}
+	case HUB_REQUEST_SET_FEATURE: {
+		TU_LOG_USBD("Set Feature: %s\r\n",_hub_feature_str[p_request->wValue]);
+		hubd_setPortState(p_request->wIndex,p_request->wValue);
+		tud_control_status(rhport, p_request);
+		break;
+	}
+	case HUB_REQUEST_GET_DESCRIPTOR: {
+		break;
+	}
+	case HUB_REQUEST_SET_DESCRIPTOR: {
+		break;
+	}
+	case HUB_REQUEST_CLEAR_TT_BUFFER: {
+		break;
+	}
+	case HUB_REQUEST_RESET_TT: {
+		break;
+	}
+	case HUB_REQUEST_GET_TT_STATE: {
+		break;
+	}
+	case HUB_REQUEST_STOP_TT: {
+		break;
+	}
+	default:
+		// Unexpected requeset
+		return false;
+	}
+	return true;
 }
 
 #endif
