@@ -28,8 +28,6 @@ on:
       - 'lib/**'
       - 'hw/**'
       - '.github/workflows/codeql.yml'
-  schedule:
-    - cron: '0 0 * * *'
 
 jobs:
   analyze:
