@@ -125,6 +125,9 @@ void dcd_int_disable(uint8_t rhport);
 // Receive Set Address request, mcu port must also include status IN response
 void dcd_set_address(uint8_t rhport, uint8_t dev_addr);
 
+// Switching between addresses
+void dcd_switch_address(uint8_t rhport, uint8_t dev_addr);
+
 // Wake up host
 void dcd_remote_wakeup(uint8_t rhport);
 
@@ -227,6 +230,9 @@ TU_ATTR_ALWAYS_INLINE static inline void dcd_event_xfer_complete (uint8_t rhport
   event.xfer_complete.len     = xferred_bytes;
   event.xfer_complete.result  = result;
   dcd_event_handler(&event, in_isr);
+  if((ep_addr & 0x01) == 0x01){
+	  dcd_switch_address(rhport, 0);
+  }
 }
 
 TU_ATTR_ALWAYS_INLINE static inline void dcd_event_sof(uint8_t rhport, uint32_t frame_count, bool in_isr) {

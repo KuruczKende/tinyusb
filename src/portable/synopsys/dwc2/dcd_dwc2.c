@@ -40,6 +40,7 @@
 
 #include "device/dcd.h"
 #include "dwc2_common.h"
+#include "common/tusb_debug.h"
 
 //--------------------------------------------------------------------+
 // MACRO TYPEDEF CONSTANT ENUM
@@ -448,6 +449,10 @@ void dcd_set_address(uint8_t rhport, uint8_t dev_addr) {
   // Response with status after changing device address
   dcd_edpt_xfer(rhport, tu_edpt_addr(0, TUSB_DIR_IN), NULL, 0);
 }
+void dcd_switch_address(uint8_t rhport, uint8_t dev_addr) {
+  dwc2_regs_t* dwc2 = DWC2_REG(rhport);
+  dwc2->dcfg = (dwc2->dcfg & ~DCFG_DAD_Msk) | (dev_addr << DCFG_DAD_Pos);
+}
 
 void dcd_remote_wakeup(uint8_t rhport) {
   (void) rhport;
@@ -822,6 +827,7 @@ static void handle_epin_slave(uint8_t rhport, uint8_t epnum, dwc2_diepint_t diep
   dwc2_regs_t* dwc2 = DWC2_REG(rhport);
   dwc2_dep_t* epin = &dwc2->epin[epnum];
   xfer_ctl_t* xfer = XFER_CTL_BASE(epnum, TUSB_DIR_IN);
+	TU_LOG3D("EPIN_SLV ep%u",epnum);
 
   if (diepint_bm.xfer_complete) {
     if ((epnum == 0) && _dcd_data.ep0_pending[TUSB_DIR_IN]) {

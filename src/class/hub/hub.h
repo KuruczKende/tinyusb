@@ -85,7 +85,7 @@ enum{
   HUB_FEATURE_PORT_INDICATOR           = 22
 };
 
-typedef enum {
+enum {
 	HUB_PORT_STATE_CONNECTION 	= 0,
 	HUB_PORT_STATE_ENABLE 		= 1,
 	HUB_PORT_STATE_SUSPEND 		= 2,

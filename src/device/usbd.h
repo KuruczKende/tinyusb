@@ -28,10 +28,42 @@
 #define _TUSB_USBD_H_
 
 #include "common/tusb_common.h"
+#include "device/dcd.h"
+#include "tusb.h"
+#include "common/tusb_private.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+//--------------------------------------------------------------------+
+// Device Data
+//--------------------------------------------------------------------+
+
+// Invalid driver ID in itf2drv[] ep2drv[][] mapping
+enum { DRVID_INVALID = 0xFFu };
+
+typedef struct {
+  struct TU_ATTR_PACKED {
+    volatile uint8_t connected    : 1;
+    volatile uint8_t addressed    : 1;
+    volatile uint8_t suspended    : 1;
+
+    uint8_t remote_wakeup_en      : 1; // enable/disable by host
+    uint8_t remote_wakeup_support : 1; // configuration descriptor's attribute
+    uint8_t self_powered          : 1; // configuration descriptor's attribute
+  };
+  volatile uint8_t cfg_num; // current active configuration (0x00 is not configured)
+  uint8_t speed;
+  volatile uint8_t sof_consumer;
+  uint8_t address;
+
+  uint8_t itf2drv[CFG_TUD_INTERFACE_MAX];   // map interface number to driver (0xff is invalid)
+  uint8_t ep2drv[CFG_TUD_ENDPPOINT_MAX][2]; // map endpoint to driver ( 0xff is invalid ), can use only 4-bit each
+
+  tu_edpt_state_t ep_status[CFG_TUD_ENDPPOINT_MAX][2];
+
+}usbd_device_t;
 
 //--------------------------------------------------------------------+
 // Application API

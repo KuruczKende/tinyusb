@@ -31,7 +31,6 @@
 //--------------------------------------------------------------------+
 // INCLUDE
 //--------------------------------------------------------------------+
-#include "device/usbd.h"
 #include "device/usbd_pvt.h"
 
 #include "hub_device.h"
@@ -77,10 +76,18 @@ typedef struct {
 } hubd_states;
 
 typedef struct {
+	usbd_device_t deviceT;
+	uint8_t* deviceDescriptor; // How the config, interface, enpoint is stored?
+} whole_device_data;
+
+typedef struct {
   uint8_t ep_in;
   uint8_t ep_out;       // optional Out endpoint
 
   hubd_states states;
+
+  usbd_device_t devices[HUB_MAX_PORT_NUM];
+  uint8_t last_added_port;
 
   const hub_desc_cs_t *hub_descriptor;
 } hubd_interface_t;
@@ -98,8 +105,8 @@ static hubd_interface_t hub_itf;
 TU_ATTR_ALWAYS_INLINE static inline uint8_t get_index_by_itfnum(uint8_t itf_num) {
   return 0xFF;
 }
-static void hubd_resetStates();
-static void hubd_setPortState(uint8_t u8PortNum, uint8_t u8PortFeature);
+static void hubd_resetFeatures();
+static void hubd_setPortFeature(uint8_t u8PortNum, uint8_t u8PortFeature);
 
 //--------------------------------------------------------------------+
 // Weak stubs: invoked if no strong implementation is available
@@ -158,6 +165,9 @@ void hubd_reset(uint8_t rhport) {
   (void)rhport;
   //tu_memclr(hub_itf, sizeof(hub_itf));
 }
+void hubd_resetStates(){
+	memset(&hub_itf.states,0,sizeof(hubd_states));
+}
 
 uint16_t hubd_open(uint8_t rhport, tusb_desc_interface_t const *desc_itf, uint16_t max_len) {
 	  TU_VERIFY(TUSB_CLASS_HUB == desc_itf->bInterfaceClass, 0);
@@ -186,7 +196,7 @@ uint16_t hubd_open(uint8_t rhport, tusb_desc_interface_t const *desc_itf, uint16
 
 	  // Prepare for output endpoint
 	  if (hub_itf.ep_out) {
-	    TU_ASSERT(usbd_edpt_xfer(rhport, hub_itf.ep_out, p_epbuf->epout, CFG_TUD_HUB_EP_BUFSIZE), drv_len);
+	    TU_ASSERT(usbd_edpt_xfer(rhport, 0, hub_itf.ep_out, p_epbuf->epout, CFG_TUD_HUB_EP_BUFSIZE), drv_len);
 	  }
 
 	  return drv_len;
@@ -256,83 +266,7 @@ bool hubd_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t 
 	    case HUB_REQUEST_STOP_TT:
 	    	break;
 	    default:
-	    	break;/*
-	      case HUB_REQ_CONTROL_GET_REPORT:
-	        if (stage == CONTROL_STAGE_SETUP) {
-	          uint8_t const report_type = tu_u16_high(request->wValue);
-	          uint8_t const report_id = tu_u16_low(request->wValue);
-
-	          uint8_t* report_buf = p_epbuf->ctrl;
-	          uint16_t req_len = tu_min16(request->wLength, CFG_TUD_HUB_EP_BUFSIZE);
-	          uint16_t xferlen = 0;
-
-	          // If host request a specific Report ID, add ID to as 1 byte of response
-	          if ((report_id != HUB_REPORT_TYPE_INVALID) && (req_len > 1)) {
-	            *report_buf++ = report_id;
-	            req_len--;
-	            xferlen++;
-	          }
-
-	          xferlen += tud_hid_get_report_cb(hid_itf, report_id, (hid_report_type_t) report_type, report_buf, req_len);
-	          TU_ASSERT(xferlen > 0);
-
-	          tud_control_xfer(rhport, request, p_epbuf->ctrl, xferlen);
-	        }
-	        break;
-
-	      case HUB_REQ_CONTROL_SET_REPORT:
-	        if (stage == CONTROL_STAGE_SETUP) {
-	          TU_VERIFY(request->wLength <= CFG_TUD_HUB_EP_BUFSIZE);
-	          tud_control_xfer(rhport, request, p_epbuf->ctrl, request->wLength);
-	        } else if (stage == CONTROL_STAGE_ACK) {
-	          uint8_t const report_type = tu_u16_high(request->wValue);
-	          uint8_t const report_id = tu_u16_low(request->wValue);
-
-	          uint8_t const* report_buf = p_epbuf->ctrl;
-	          uint16_t report_len = tu_min16(request->wLength, CFG_TUD_HUB_EP_BUFSIZE);
-
-	          // If host request a specific Report ID, extract report ID in buffer before invoking callback
-	          if ((report_id != HUB_REPORT_TYPE_INVALID) && (report_len > 1) && (report_id == report_buf[0])) {
-	            report_buf++;
-	            report_len--;
-	          }
-
-	          tud_hid_set_report_cb(hid_itf, report_id, (hid_report_type_t) report_type, report_buf, report_len);
-	        }
-	        break;
-
-	      case HUB_REQ_CONTROL_SET_IDLE:
-	        if (stage == CONTROL_STAGE_SETUP) {
-	          p_hid->idle_rate = tu_u16_high(request->wValue);
-	          TU_VERIFY(tud_hid_set_idle_cb(hid_itf, p_hid->idle_rate)); // stall if false
-	          tud_control_status(rhport, request);
-	        }
-	        break;
-
-	      case HUB_REQ_CONTROL_GET_IDLE:
-	        if (stage == CONTROL_STAGE_SETUP) {
-	          // TODO idle rate of report
-	          tud_control_xfer(rhport, request, &p_hid->idle_rate, 1);
-	        }
-	        break;
-
-	      case HUB_REQ_CONTROL_GET_PROTOCOL:
-	        if (stage == CONTROL_STAGE_SETUP) {
-	          tud_control_xfer(rhport, request, &p_hid->protocol_mode, 1);
-	        }
-	        break;
-
-	      case HUB_REQ_CONTROL_SET_PROTOCOL:
-	        if (stage == CONTROL_STAGE_SETUP) {
-	          tud_control_status(rhport, request);
-	        } else if (stage == CONTROL_STAGE_ACK) {
-	          p_hid->protocol_mode = (uint8_t) request->wValue;
-	          tud_hid_set_protocol_cb(hid_itf, p_hid->protocol_mode);
-	        }
-	        break;
-
-	      default:
-	        return false; // stall unsupported request*/
+	    	break;
 	    }
 	  } else {
 	    return false; // stall unsupported request
@@ -347,18 +281,30 @@ bool hubd_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, uint32_
   return true;
 }
 
-static void hubd_resetStates(){
+static void hubd_resetFeatures(){
 	memset(&hub_itf.states, 0, sizeof(hubd_states));
 }
 //u8PortNum from 1 to bNbrPorts
 //u8PortFeature: the bit idx includeing state and change (hub.h 69.line)
-static void hubd_setPortState(uint8_t u8PortNum, uint8_t u8PortFeature){
+static void hubd_setPortFeature(uint8_t u8PortNum, uint8_t u8PortFeature){
 	hub_itf.states.sHubPortStates[u8PortNum-1].status.value |= (0xffff&(0x01<<(u8PortFeature)));
-	if (u8PortFeature <= HUB_PORT_STATE_RESET) {
-		hub_itf.states.sHubPortStates[u8PortNum-1].change.value |= (0x001f&(0x01<<(u8PortFeature)));
-	}
+}
+static void hubd_clearPortFeature(uint8_t u8PortNum, uint8_t u8PortFeature){
+	hub_itf.states.sHubPortStates[u8PortNum-1].change.value &= (0xffff&~(0x01<<(u8PortFeature-HUB_FEATURE_PORT_CONNECTION_CHANGE)));
+}
+static hub_port_status_response_t* hubd_PortFeature(uint8_t u8PortNum){
+	return &(hub_itf.states.sHubPortStates[u8PortNum-1]);
 }
 
+void hubd_connectDevice(uint8_t u8PortNum, uint8_t* usb_desc){
+	hub_itf.states.sHubPortStates[u8PortNum].status.connection = 1;
+	hub_itf.states.sHubPortStates[u8PortNum].change.connection = 1;
+	last_added_port = u8PortNum;
+}
+/*usbd_device_t*/uint8_t* hubd_getUsbdDev(uint8_t dev_num){
+	return (uint8_t*)&hub_itf.devices[dev_num];
+}
+uint8_t resetResponse = 0x02;
 bool hubd_handle_controll_port_request(uint8_t rhport, const tusb_control_request_t* p_request) {
     TU_LOG_USBD("hub %s request to port %d\r\n",_hub_request_str[p_request->bRequest],p_request->wIndex);
 
@@ -373,16 +319,32 @@ bool hubd_handle_controll_port_request(uint8_t rhport, const tusb_control_reques
 		break;
 	}
 	case HUB_REQUEST_CLEAR_FEATURE: {
-
+		TU_LOG_USBD("Clear Feature: %s\r\n",_hub_feature_str[p_request->wValue]);
+		hubd_clearPortFeature(p_request->wIndex,p_request->wValue);
+		tud_control_status(rhport, p_request);
 		break;
 	}
 	case HUB_REQUEST_SET_FEATURE: {
 		TU_LOG_USBD("Set Feature: %s\r\n",_hub_feature_str[p_request->wValue]);
-		hubd_setPortState(p_request->wIndex,p_request->wValue);
 		tud_control_status(rhport, p_request);
+		hub_port_status_response_t* pportStatus = hubd_PortFeature(p_request->wIndex);
+		switch(p_request->wValue){
+		case HUB_FEATURE_PORT_RESET:
+			usbd_edpt_xfer(rhport, 0, 0x81, &resetResponse, 1);
+			pportStatus->change.reset = 1;
+			pportStatus->status.reset = 0;
+			pportStatus->status.port_enable = 1;
+			break;
+		default:
+			hubd_setPortFeature(p_request->wIndex,p_request->wValue);
+			break;
+		}
+		if(p_request->wValue == HUB_FEATURE_PORT_RESET){
+		}
 		break;
 	}
 	case HUB_REQUEST_GET_DESCRIPTOR: {
+		TU_LOG_USBD("Get Descriptor for %u",p_request->wIndex);
 		break;
 	}
 	case HUB_REQUEST_SET_DESCRIPTOR: {
