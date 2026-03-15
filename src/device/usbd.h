@@ -42,6 +42,10 @@ extern "C" {
 
 // Invalid driver ID in itf2drv[] ep2drv[][] mapping
 enum { DRVID_INVALID = 0xFFu };
+enum { DRVID_DEVIDX_INVALID = 0xFFFFu };
+#define MAX_CFG_SIZE 255u
+#define MAX_STRINGS 6u
+#define MAX_STR_LEN 32u
 
 typedef struct {
   struct TU_ATTR_PACKED {
@@ -56,12 +60,24 @@ typedef struct {
   volatile uint8_t cfg_num; // current active configuration (0x00 is not configured)
   uint8_t speed;
   volatile uint8_t sof_consumer;
-  uint8_t address;
+  uint8_t address; // what address was assigned to it by SET_ADDRESS
 
-  uint8_t itf2drv[CFG_TUD_INTERFACE_MAX];   // map interface number to driver (0xff is invalid)
-  uint8_t ep2drv[CFG_TUD_ENDPPOINT_MAX][2]; // map endpoint to driver ( 0xff is invalid ), can use only 4-bit each
+  // two uint8_t (Driver<<8)|Device in driver
+  uint16_t itf2drv[CFG_TUD_INTERFACE_MAX];   // map interface number to driver (0xff is invalid)
+  uint16_t ep2drv[CFG_TUD_ENDPPOINT_MAX][2]; // map endpoint to driver ( 0xff is invalid ), can use only 4-bit each
 
   tu_edpt_state_t ep_status[CFG_TUD_ENDPPOINT_MAX][2];
+
+  // Descriptors
+  uint8_t desc_pool_idx; // pool for descriptors
+  tusb_desc_device_t dev_desc;
+  tusb_desc_device_qualifier_t dev_qual_desc;
+  // uint16_t conf_desc_len; it's in the tusb_desc_configuration_t.wTotalLength
+  uint8_t conf_desc[MAX_CFG_SIZE];
+
+  // Strings
+  uint8_t string_count;
+  char strings[MAX_STRINGS][MAX_STR_LEN];
 
 }usbd_device_t;
 
@@ -104,6 +120,8 @@ void tud_task (void) {
 // Check if there is pending events need processing by tud_task()
 bool tud_task_event_ready(void);
 
+void configure_hub(void);
+
 #ifndef TUSB_DCD_H_
 extern void dcd_int_handler(uint8_t rhport);
 #endif
@@ -112,26 +130,26 @@ extern void dcd_int_handler(uint8_t rhport);
 #define tud_int_handler   dcd_int_handler
 
 // Get current bus speed
-tusb_speed_t tud_speed_get(void);
+tusb_speed_t tud_speed_get(uint8_t port_num);
 
 // Check if device is connected (may not mounted/configured yet)
 // True if just got out of Bus Reset and received the very first data from host
-bool tud_connected(void);
+bool tud_connected(uint8_t port_num);
 
 // Check if device is connected and configured
-bool tud_mounted(void);
+bool tud_mounted(uint8_t port_num);
 
 // Check if device is suspended
-bool tud_suspended(void);
+bool tud_suspended(uint8_t port_num);
 
 // Check if device is ready to transfer
 TU_ATTR_ALWAYS_INLINE static inline
-bool tud_ready(void) {
-  return tud_mounted() && !tud_suspended();
+bool tud_ready(uint8_t port_num) {
+  return tud_mounted(port_num) && !tud_suspended(port_num);
 }
 
 // Remote wake up host, only if suspended and enabled by host
-bool tud_remote_wakeup(void);
+bool tud_remote_wakeup(uint8_t port_num);
 
 // Enable pull-up resistor on D+ D-
 // Return false on unsupported MCUs
@@ -147,10 +165,10 @@ void tud_sof_cb_enable(bool en);
 // Carry out Data and Status stage of control transfer
 // - If len = 0, it is equivalent to sending status only
 // - If len > wLength : it will be truncated
-bool tud_control_xfer(uint8_t rhport, tusb_control_request_t const * request, void* buffer, uint16_t len);
+bool tud_control_xfer(uint8_t rhport, uint8_t port_num, tusb_control_request_t const * request, void* buffer, uint16_t len);
 
 // Send STATUS (zero length) packet
-bool tud_control_status(uint8_t rhport, tusb_control_request_t const * request);
+bool tud_control_status(uint8_t rhport, uint8_t port_num, tusb_control_request_t const * request);
 
 //--------------------------------------------------------------------+
 // Application Callbacks
@@ -203,7 +221,7 @@ void tud_event_hook_cb(uint8_t rhport, uint32_t eventid, bool in_isr);
 void tud_sof_cb(uint32_t frame_count);
 
 // Invoked when received control request with VENDOR TYPE
-bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * request);
+bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t port_num, uint8_t stage, tusb_control_request_t const * request);
 
 //--------------------------------------------------------------------+
 // Binary Device Object Store (BOS) Descriptor Templates

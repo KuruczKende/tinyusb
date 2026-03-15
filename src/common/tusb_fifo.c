@@ -28,7 +28,7 @@
 #include "osal/osal.h"
 #include "tusb_fifo.h"
 
-#define TU_FIFO_DBG   0
+#define TU_FIFO_DBG   1
 
 // Suppress IAR warning
 // Warning[Pa082]: undefined behavior: the order of volatile accesses is undefined in this statement

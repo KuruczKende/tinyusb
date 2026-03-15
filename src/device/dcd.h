@@ -85,6 +85,11 @@ typedef struct TU_ATTR_ALIGNED(4) {
   };
 } dcd_event_t;
 
+enum {
+  EDPT_CTRL_OUT = 0x00,
+  EDPT_CTRL_IN = 0x80
+};
+
 //TU_VERIFY_STATIC(sizeof(dcd_event_t) <= 12, "size is not correct");
 
 //--------------------------------------------------------------------+

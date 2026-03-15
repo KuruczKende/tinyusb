@@ -62,12 +62,12 @@
 //--------------------------------------------------------------------+
 // Internal Class Driver API
 //--------------------------------------------------------------------+
-void     hubd_init            (void);
-bool     hubd_deinit          (void);
-void     hubd_reset           (uint8_t rhport);
-uint16_t hubd_open            (uint8_t rhport, tusb_desc_interface_t const * itf_desc, uint16_t max_len);
-bool     hubd_control_xfer_cb (uint8_t rhport, uint8_t stage, tusb_control_request_t const * request);
-bool     hubd_xfer_cb         (uint8_t rhport, uint8_t ep_addr, xfer_result_t event, uint32_t xferred_bytes);
+void     hubd_init            (uint8_t port_num);
+bool     hubd_deinit          (uint8_t port_num);
+void     hubd_reset           (uint8_t rhport, uint8_t port_num);
+uint16_t hubd_open            (uint8_t rhport, uint8_t port_num, tusb_desc_interface_t const * itf_desc, uint16_t max_len);
+bool     hubd_control_xfer_cb (uint8_t rhport, uint8_t port_num, uint8_t stage, tusb_control_request_t const * request);
+bool     hubd_xfer_cb         (uint8_t rhport, uint8_t port_num, uint8_t ep_addr, xfer_result_t event, uint32_t xferred_bytes);
 
 #ifdef __cplusplus
  }

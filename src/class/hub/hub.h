@@ -45,7 +45,7 @@
 //
 //--------------------------------------------------------------------+
 
-#define HUB_MAX_PORT_NUM 16
+#define HUB_MAX_PORT_NUM 8
 
 enum {
   HUB_REQUEST_GET_STATUS      = 0  ,
