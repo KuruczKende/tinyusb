@@ -82,10 +82,9 @@ typedef struct {
 
   hubd_states states;
 
-  usbd_device_t devices[HUB_MAX_PORT_NUM];
   uint8_t last_added_port;
 
-  uint8_t port_num;
+
 } hubd_interface_t;
 
 typedef struct {
@@ -98,9 +97,7 @@ CFG_TUD_MEM_SECTION static hubd_epbuf_t _hubd_epbuf;
 static hubd_interface_t hub_itf;
 
 /*------------- Helpers -------------*/
-TU_ATTR_ALWAYS_INLINE static inline uint8_t get_index_by_itfnum(uint8_t itf_num) {
-  return 0xFF;
-}
+
 static void hubd_resetFeatures();
 static void hubd_setPortFeature(uint8_t u8PortNum, uint8_t u8PortFeature);
 
@@ -242,7 +239,7 @@ bool hubd_control_xfer_cb(uint8_t rhport, uint8_t port_num, uint8_t stage, tusb_
 	    //------------- Class Specific Request -------------//
 	    switch (request->bRequest) {
 	    case HUB_REQUEST_GET_STATUS:
-			tud_control_xfer(rhport, TUD_HUB_PORT_NUM, request,&hub_itf.states.sHubState,sizeof(hub_status_response_t));
+			tud_control_xfer(rhport, TUD_HUB_PORT_NUM, request, &hub_itf.states.sHubState,sizeof(hub_status_response_t));
 	    	break;
 	    case HUB_REQUEST_CLEAR_FEATURE:
 	    	break;
@@ -253,10 +250,10 @@ bool hubd_control_xfer_cb(uint8_t rhport, uint8_t port_num, uint8_t stage, tusb_
 	    		request->wIndex==0x0000){
 	    		hub_desc_cs_t* hub_desc = NULL;
 	    	    boCU_GetDesc(HUB_POOL_IDX, 0x19, 0, &hub_desc, NULL);
+	    	    TU_LOG_USBD("get desc\r\n");
 	    		tud_control_xfer(rhport, TUD_HUB_PORT_NUM, request, hub_desc, 9);
 	    	}
 	    	else{
-
 	    	    TU_LOG_USBD("ezt is kezeld le\r\n");
 	    	}
 	    	break;
@@ -302,13 +299,51 @@ static hub_port_status_response_t* hubd_PortFeature(uint8_t u8PortNum){
 	return &(hub_itf.states.sHubPortStates[u8PortNum-1]);
 }
 
-void hubd_connectDevice(uint8_t u8PortNum, uint8_t* usb_desc){
-	hub_itf.states.sHubPortStates[u8PortNum].status.connection = 1;
-	hub_itf.states.sHubPortStates[u8PortNum].change.connection = 1;
+bool hubd_connectDevice(uint8_t u8PortNum, uint8_t u8DescPoolIdx){
+	// copy descriptor and set enpoint numbers
+	uint8_t u8PoolDescIdx = u8CU_CopyDesc(u8DescPoolIdx);
+	// going trought the endpoint descriptors and switching each one to a free one while saving the switchings
+	uint8_t u8EpMap[16]={0};//7..4 old ep, 3..0 new ep
+	uint8_t u8EpMapSize=0;
+	uint8_t u8EpOcc=0;
+	uint8_t* pu8Data;
+	while(boCU_GetDesc(u8PoolDescIdx,TUSB_DESC_ENDPOINT,u8EpOcc,&pu8Data,NULL)){
+		uint8_t u8Ep = pu8Data[2]; //bEndpointAddress
+		uint8_t u8EpAddr = (u8Ep<<4)&0xf0; //bEndpointAddress/Endpoint Number<<4
+		//uint8_t u8EpType = pu8Data[3]&0x03; //bmAttributes&TransferType
+		uint8_t i;
+		for(i=0;i<u8EpMapSize;i++)
+			if((u8EpMap[i]&0xf0) == u8EpAddr)
+				break;
+
+		if(i>=u8EpMapSize){
+			//No match
+			uint8_t u8NewEp;
+			if(boGetFreeEndPoint(&u8NewEp)==false){
+				//TODO delete copy of desc in CU
+				//free any used ep
+				for(uint8_t j=0;j<u8EpMapSize;j++){
+					boUseEndPoint(u8EpMap[j]&0x0f,false);
+				}
+				return false;
+			}
+			boUseEndPoint(u8NewEp, true);
+			u8EpMap[i]=(u8EpAddr)|(u8NewEp&0x0f);
+			u8EpMapSize++;
+		}
+		// Rewrite the endpoint number
+		pu8Data[2] &=0xf0;
+		pu8Data[2] |=u8EpMap[i]&0x0f;
+		u8EpOcc++;
+	}
+
+	// Add device to usbd devices
+	tud_connectByHub(u8PortNum, u8PoolDescIdx);
+
+	hub_itf.states.sHubPortStates[u8PortNum-1].status.connection = 1;
+	hub_itf.states.sHubPortStates[u8PortNum-1].change.connection = 1;
 }
-/*usbd_device_t*/uint8_t* hubd_getUsbdDev(uint8_t dev_num){
-	return (uint8_t*)&hub_itf.devices[dev_num];
-}
+
 uint8_t resetResponse = 0x02;
 bool hubd_handle_controll_port_request(uint8_t rhport, const tusb_control_request_t* p_request) {
     TU_LOG_USBD("hub %s request to port %d\r\n",_hub_request_str[p_request->bRequest],p_request->wIndex);

@@ -52,12 +52,10 @@
 // Application API
 //--------------------------------------------------------------------+
  bool boIsHubReq(uint8_t bRequest);
- void hubd_connectDevice(uint8_t u8PortNum, uint8_t* usb_desc);
- /*usbd_device_t*/uint8_t* hubd_getUsbdDev(uint8_t dev_num);
+ bool hubd_connectDevice(uint8_t u8PortNum, uint8_t u8DescPoolIdx);
 //--------------------------------------------------------------------+
 // Application Callbacks
 //--------------------------------------------------------------------+
- uint8_t const * tud_hub_descriptor_report_cb();
 
 //--------------------------------------------------------------------+
 // Internal Class Driver API

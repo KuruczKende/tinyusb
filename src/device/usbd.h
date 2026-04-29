@@ -70,14 +70,6 @@ typedef struct {
 
   // Descriptors
   uint8_t desc_pool_idx; // pool for descriptors
-  tusb_desc_device_t dev_desc;
-  tusb_desc_device_qualifier_t dev_qual_desc;
-  // uint16_t conf_desc_len; it's in the tusb_desc_configuration_t.wTotalLength
-  uint8_t conf_desc[MAX_CFG_SIZE];
-
-  // Strings
-  uint8_t string_count;
-  char strings[MAX_STRINGS][MAX_STR_LEN];
 
 }usbd_device_t;
 
@@ -161,6 +153,16 @@ bool tud_connect(void);
 
 // Enable or disable the Start Of Frame callback support
 void tud_sof_cb_enable(bool en);
+
+// Connect a device, called by hubd_connectDevice
+void tud_connectByHub(uint8_t port_num, uint8_t desc_pool_idx);
+
+// Get the next free endpoint
+bool boGetFreeEndPoint(uint8_t* pu8EpNum);
+
+// Acquire/Release an endpoint
+// boUse==false: free up ep, acquire otherwise
+bool boUseEndPoint(uint8_t u8Ep, bool boUse);
 
 // Carry out Data and Status stage of control transfer
 // - If len = 0, it is equivalent to sending status only

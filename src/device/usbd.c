@@ -35,6 +35,8 @@
 #include "device/usbd.h"
 #include "device/usbd_pvt.h"
 
+#include "main.h"
+
 //--------------------------------------------------------------------+
 // USBD Configuration
 //--------------------------------------------------------------------+
@@ -117,6 +119,7 @@ TU_ATTR_WEAK bool dcd_dcache_clean_invalidate(const void* addr, uint32_t data_si
 //--------------------------------------------------------------------+
 
 tu_static usbd_device_t _usbd_dev[CFG_TUD_HUB_PORT + 1];
+bool _usbd_used_ep[CFG_TUD_ENDPPOINT_MAX];
 static volatile uint8_t _usbd_queued_setup;
 
 //--------------------------------------------------------------------+
@@ -337,12 +340,34 @@ uint8_t ep2port(uint8_t ep_addr){
 }
 uint8_t addr2port(uint8_t addr){
 	for(uint8_t i=0;i<CFG_TUD_HUB_PORT + 1;i++){
-		if(_usbd_dev[i].address != addr){
+		if(addr == 0){
+			TU_LOG_USBD("%d on %02x", i, _usbd_dev[i].address);
+		}
+		if(_usbd_dev[i].address == addr){
 			return i;
 		}
 	}
 	return 0;
 }
+
+bool boGetFreeEndPoint(uint8_t* pu8EpNum){
+	for(uint8_t i=0;i<CFG_TUD_ENDPPOINT_MAX;i++){
+		if(!_usbd_used_ep[i]){
+			*pu8EpNum = i;
+			return true;
+		}
+	}
+	return false;
+}
+//boUse==false: free up ep
+bool boUseEndPoint(uint8_t u8Ep, bool boUse){
+	uint8_t u8EpNum = u8Ep&0x0f;
+	if(u8EpNum >= CFG_TUD_ENDPPOINT_MAX) return false;
+	if(_usbd_used_ep[u8EpNum] == boUse) return false;
+	_usbd_used_ep[u8EpNum] = boUse;
+	return true;
+}
+
 
 //used when function didn't called, but port number required
 #define DUMY_PORT 0
@@ -475,6 +500,11 @@ bool tud_connect(void) {
 void tud_sof_cb_enable(bool en) {
   usbd_sof_enable(_usbd_rhport, SOF_CONSUMER_USER, en);
 }
+//called by hubd_connectDevice
+void tud_connectByHub(uint8_t port_num, uint8_t desc_pool_idx){
+	clear_dev(port_num);
+	_usbd_dev[port_num].desc_pool_idx = desc_pool_idx;
+}
 
 //--------------------------------------------------------------------+
 // USBD Task
@@ -498,6 +528,8 @@ bool tud_rhport_init(uint8_t rhport, const tusb_rhport_init_t* rh_init) {
 
   for(uint8_t i=0;i<HUB_MAX_PORT_NUM+1;i++){
 	  clear_dev(i);
+	  memset(_usbd_dev[i].itf2drv, DRVID_INVALID, sizeof(_usbd_dev[i].itf2drv)); // invalid mapping
+	  memset(_usbd_dev[i].ep2drv, DRVID_INVALID, sizeof(_usbd_dev[i].ep2drv)); // invalid mapping
   }
   _usbd_queued_setup = 0;
 
@@ -563,12 +595,17 @@ bool tud_deinit(uint8_t rhport) {
 }
 
 static void configuration_reset(uint8_t rhport, uint8_t port_num) {
-  usbd_class_driver_t const* hubDriver = get_driver(TUD_HUB_DRIVER_IDX);
-  hubDriver->reset(rhport, port_num);
+	uint8_t i=0;
+	while((_usbd_dev[port_num].itf2drv[i] != DRVID_INVALID) && (i < CFG_TUD_INTERFACE_MAX)){
+		uint16_t drvdev = _usbd_dev[port_num].itf2drv[i];
+		usbd_class_driver_t const* driver = get_driver(drvdev>>8);
+		driver->reset(rhport, port_num);
+		i++;
+	}
 
-  clear_dev(port_num);
-  memset(_usbd_dev[port_num].itf2drv, DRVID_INVALID, sizeof(_usbd_dev[port_num].itf2drv)); // invalid mapping
-  memset(_usbd_dev[port_num].ep2drv, DRVID_INVALID, sizeof(_usbd_dev[port_num].ep2drv)); // invalid mapping
+	clear_dev(port_num);
+	memset(_usbd_dev[port_num].itf2drv, DRVID_INVALID, sizeof(_usbd_dev[port_num].itf2drv)); // invalid mapping
+	memset(_usbd_dev[port_num].ep2drv, DRVID_INVALID, sizeof(_usbd_dev[port_num].ep2drv)); // invalid mapping
 }
 
 static void usbd_reset(uint8_t rhport, uint8_t port_num) {
@@ -641,6 +678,16 @@ void configure_hub(void){
 	};
 	u8CU_SaveDesc(&itf_desc);
 
+	tusb_desc_endpoint_t ep_desc = (tusb_desc_endpoint_t){
+			 .bLength            = 0x07,
+			 .bDescriptorType    = TUSB_DESC_ENDPOINT,
+			 .bEndpointAddress   = 0x81,
+			 .bmAttributes       = 0x03,
+			 .wMaxPacketSize     = 0x0001,
+			 .bInterval          = 0xff
+	};
+	u8CU_SaveDesc(&ep_desc);
+
 	hub_desc_cs_t hub_desc = (hub_desc_cs_t){
 	  .bLength             = 0x09,
 	  .bDescriptorType     = 0x19,
@@ -653,15 +700,6 @@ void configure_hub(void){
 	};
 	u8CU_SaveDesc(&hub_desc);
 
-	tusb_desc_endpoint_t ep_desc = (tusb_desc_endpoint_t){
-			 .bLength            = 0x07,
-			 .bDescriptorType    = TUSB_DESC_ENDPOINT,
-			 .bEndpointAddress   = 0x81,
-			 .bmAttributes       = 0x03,
-			 .wMaxPacketSize     = 0x0001,
-			 .bInterval          = 0xff
-	};
-	u8CU_SaveDesc(&ep_desc);
 
 	uint8_t au8StrLang[] = { 2+3, TUSB_DESC_STRING, 0x09, 0x04, '\0'};
 	u8CU_SaveDesc(&au8StrLang);
@@ -706,15 +744,15 @@ void tud_task_ext(uint32_t timeout_ms, bool in_isr) {
     switch (event.event_id) {
       case DCD_EVENT_BUS_RESET:
         TU_LOG_USBD(": %s Speed\r\n", tu_str_speed[event.bus_reset.speed]);
-        for(uint8_t i=0;i<HUB_MAX_PORT_NUM+1;i++){
-        	usbd_reset(event.rhport, i);
-        	_usbd_dev[i].speed = event.bus_reset.speed;
-        }
+        // On Reset only the hub resets and disconnects everithing
+        // TODO now the hub only informed but not reseted, the hub never should reset
+        get_driver(TUD_HUB_DRIVER_IDX)->reset(TUD_OPT_RHPORT, TUD_HUB_PORT_NUM);
         break;
 
       case DCD_EVENT_UNPLUGGED:
         TU_LOG_USBD("\r\n");
-        for(uint8_t i=0;i<HUB_MAX_PORT_NUM+1;i++){usbd_reset(event.rhport, i);}
+        get_driver(TUD_HUB_DRIVER_IDX)->reset(TUD_OPT_RHPORT, TUD_HUB_PORT_NUM);
+
         tud_umount_cb();
         break;
 
@@ -860,7 +898,7 @@ static bool process_control_request(uint8_t rhport, uint8_t port_num, tusb_contr
         uint8_t const itf = tu_u16_low(p_request->wIndex);
         TU_VERIFY(itf < CFG_TUD_INTERFACE_MAX);
         uint16_t drvdev = _usbd_dev[port_num].itf2drv[itf];
-
+        TU_LOG_USBD("port_num: %d drvdev: %04x", port_num, drvdev);
         if(drvdev == DRVID_DEVIDX_INVALID){
         	// call before set_conf
         	if(port_num == TUD_HUB_PORT_NUM && itf == 0){
@@ -1316,6 +1354,83 @@ static bool process_get_descriptor(uint8_t rhport, uint8_t port_num, tusb_contro
     default: return false;
   }
 }
+uint8_t readOutRawAddress(){
+	uint8_t u8Raw = 0u;
+// 0
+	// read
+	if ((DataIn_GPIO_Port->IDR & DataIn_Pin) != 0x00U)
+	{
+		u8Raw |= 0x80;
+	}
+	// set
+	DataClk_GPIO_Port->BSRR = DataClk_Pin;
+	// reset
+	DataClk_GPIO_Port->BSRR = (uint32_t)DataClk_Pin << GPIO_NUMBER;
+// 1
+	u8LRaw >>= 1;
+	if ((DataIn_GPIO_Port->IDR & DataIn_Pin) != 0x00U)
+		u8Raw |= 0x80;
+	DataClk_GPIO_Port->BSRR = DataClk_Pin;
+	DataClk_GPIO_Port->BSRR = (uint32_t)DataClk_Pin << GPIO_NUMBER;
+// 2
+	u8LRaw >>= 1;
+	if ((DataIn_GPIO_Port->IDR & DataIn_Pin) != 0x00U)
+		u8Raw |= 0x80;
+	DataClk_GPIO_Port->BSRR = DataClk_Pin;
+	DataClk_GPIO_Port->BSRR = (uint32_t)DataClk_Pin << GPIO_NUMBER;
+// 3
+	u8LRaw >>= 1;
+	if ((DataIn_GPIO_Port->IDR & DataIn_Pin) != 0x00U)
+		u8Raw |= 0x80;
+	DataClk_GPIO_Port->BSRR = DataClk_Pin;
+	DataClk_GPIO_Port->BSRR = (uint32_t)DataClk_Pin << GPIO_NUMBER;
+// 4
+	u8LRaw >>= 1;
+	if ((DataIn_GPIO_Port->IDR & DataIn_Pin) != 0x00U)
+		u8Raw |= 0x80;
+	DataClk_GPIO_Port->BSRR = DataClk_Pin;
+	DataClk_GPIO_Port->BSRR = (uint32_t)DataClk_Pin << GPIO_NUMBER;
+// 5
+	u8LRaw >>= 1;
+	if ((DataIn_GPIO_Port->IDR & DataIn_Pin) != 0x00U)
+		u8Raw |= 0x80;
+	DataClk_GPIO_Port->BSRR = DataClk_Pin;
+	DataClk_GPIO_Port->BSRR = (uint32_t)DataClk_Pin << GPIO_NUMBER;
+// 6
+	u8LRaw >>= 1;
+	if ((DataIn_GPIO_Port->IDR & DataIn_Pin) != 0x00U)
+		u8Raw |= 0x80;
+	DataClk_GPIO_Port->BSRR = DataClk_Pin;
+	DataClk_GPIO_Port->BSRR = (uint32_t)DataClk_Pin << GPIO_NUMBER;
+// 7
+	u8LRaw >>= 1;
+	if ((DataIn_GPIO_Port->IDR & DataIn_Pin) != 0x00U)
+		u8Raw |= 0x80;
+// enable next trigger
+	TriggerEnable_GPIO_Port->BSRR = (uint32_t)TriggerEnable_Pin << GPIO_NUMBER;
+	TriggerEnable_GPIO_Port->BSRR = TriggerEnable_Pin;
+	return u8Raw;
+}
+void readOutAddress(uint8_t* pu8Address, uint8_t* pu8Raw){
+	uint8_t u8LAddress = 0u;
+	uint8_t u8LRaw = 0u;
+	uint8_t u8Last = GPIO_PIN_SET;
+	uint8_t u8Cur = GPIO_PIN_SET;
+	for(uint8_t i=0; i<8; i++){
+		u8Cur = HAL_GPIO_ReadPin(DataIn_GPIO_Port, DataIn_Pin);
+		u8LRaw >>= 1;
+		u8LRaw |= (u8Cur == GPIO_PIN_SET)?0x80:0x00;
+		u8LAddress >>= 1;
+		u8LAddress |= (u8Last == u8Cur)?0x80:0x00;
+		u8Last = u8Cur;
+		// set
+		DataClk_GPIO_Port->BSRR = DataClk_Pin;
+		// reset
+		DataClk_GPIO_Port->BSRR = (uint32_t)DataClk_Pin << GPIO_NUMBER;
+	}
+	*pu8Address = u8LAddress;
+	*pu8Raw = u8LRaw;
+}
 
 //--------------------------------------------------------------------+
 // DCD Event Handler
@@ -1375,10 +1490,12 @@ TU_ATTR_FAST_FUNC void dcd_event_handler(dcd_event_t const* event, bool in_isr) 
       break;
 
     case DCD_EVENT_SETUP_RECEIVED:
-    	// TODO check where the addr is stored
-        TU_LOG_USBD("SETUP: ");
-        TU_LOG_BUF(&event->setup_received,8);
-      lsd = addr2port(event->setup_received.bRequest);
+    	// TODO check where the addr is stored: nowhere
+        uint8_t u8Address;
+        uint8_t u8Raw;
+        readOutAddress(&u8Address,&u8Raw);
+      lsd = addr2port(u8Address);
+      TU_LOG_USBD("SETUP %02x<%02x to port: %02x",u8Address,u8Raw,lsd);
       _usbd_queued_setup++;
       send = true;
       break;
